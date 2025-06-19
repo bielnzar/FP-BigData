@@ -1,0 +1,33 @@
+# src/spark_jobs/config/job_configs.yaml
+
+# Konfigurasi Umum (bisa di-override oleh environment variables)
+kafka_bootstrap_servers: "kafka:9092" # Dari dalam jaringan Docker
+minio_bucket: "fp-bigdata" # Nama bucket MinIO Anda
+
+# Konfigurasi untuk streaming_kafka_to_bronze.py
+kafka_to_bronze_job:
+  structured_data_topic: "structured_health_stats_raw"
+  unstructured_data_topic: "unstructured_text_data_raw"
+  bronze_structured_path_s3a: "s3a://{{minio_bucket}}/bronze/structured_data" # Gunakan s3a://
+  bronze_unstructured_path_s3a: "s3a://{{minio_bucket}}/bronze/unstructured_data"
+  checkpoint_location_structured_s3a: "s3a://{{minio_bucket}}/checkpoints/bronze_structured"
+  checkpoint_location_unstructured_s3a: "s3a://{{minio_bucket}}/checkpoints/bronze_unstructured"
+  trigger_interval: "1 minute" # Misalnya "1 minute", "30 seconds"
+
+# Konfigurasi untuk etl_bronze_to_silver.py
+bronze_to_silver_job:
+  silver_structured_path_s3a: "s3a://{{minio_bucket}}/silver/structured_data_cleaned"
+  silver_unstructured_path_s3a: "s3a://{{minio_bucket}}/silver/unstructured_data_processed"
+
+# Konfigurasi untuk etl_silver_to_gold.py
+silver_to_gold_job:
+  gold_structured_aggregates_path_s3a: "s3a://{{minio_bucket}}/gold/structured_aggregates"
+  gold_unstructured_insights_path_s3a: "s3a://{{minio_bucket}}/gold/unstructured_insights"
+
+# Konfigurasi untuk ml_training.py
+ml_training_job:
+  features_data_path_s3a: "s3a://{{minio_bucket}}/gold/features_for_ml" # Contoh
+  model_save_path_s3a: "s3a://{{minio_bucket}}/models/health_predictor"
+
+# Catatan: {{minio_bucket}} adalah placeholder jika Anda menggunakan templating saat membaca YAML.
+# Jika tidak, ganti langsung dengan nama bucket Anda.
