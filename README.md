@@ -62,7 +62,7 @@ Untuk membangun platform ini, digunakan serangkaian teknologi open-source yang t
 
 ### Diagram Arsitektur Solusi
 
-![Image-Arsitektur](https://github.com/bielnzar/BigData/blob/main/Final-Project/images/revisi-arsitektur3.png)
+![Image-Arsitektur](https://github.com/bielnzar/FP-BigData/blob/main/images/revisi-arsitektur3.png)
 
 ## Penjelasan Rinci Alur Kerja
 
