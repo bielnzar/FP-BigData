@@ -1,0 +1,55 @@
+# final-project-bdl/Dockerfile.spark
+
+FROM apache/spark-py:v3.4.0
+
+ENV SPARK_HOME /opt/spark
+ENV SPARK_JARS_DIR $SPARK_HOME/jars
+ENV PATH $SPARK_HOME/bin:$SPARK_HOME/sbin:$PATH
+
+USER root
+
+# --- Konfigurasi Versi ---
+# Gunakan versi Hadoop yang cocok dengan versi Spark (Spark 3.4.x -> Hadoop 3.3.x)
+# Spark 3.4.0 uses hadoop 3.3.4
+ARG HADOOP_VERSION=3.3.4
+ARG AWS_SDK_VERSION=1.12.262
+# Delta Lake 2.4.0 for Spark 3.4
+ARG DELTA_VERSION=2.4.0
+# Kafka Connector untuk Spark 3.4.0
+ARG KAFKA_VERSION=3.4.0
+
+
+# --- Download JARs Dependensi ---
+# Menggunakan curl untuk keandalan dan logging yang lebih baik
+RUN echo "Downloading dependencies..." && \
+    # 1. Hadoop AWS Connector + SDK Bundle (untuk S3/MinIO)
+    curl -fSL "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/${HADOOP_VERSION}/hadoop-aws-${HADOOP_VERSION}.jar" -o "${SPARK_JARS_DIR}/hadoop-aws.jar" && \
+    curl -fSL "https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/${AWS_SDK_VERSION}/aws-java-sdk-bundle-${AWS_SDK_VERSION}.jar" -o "${SPARK_JARS_DIR}/aws-java-sdk-bundle.jar" && \
+    # 2. Delta Lake Connector (delta-spark)
+    curl -fSL "https://repo1.maven.org/maven2/io/delta/delta-core_2.12/${DELTA_VERSION}/delta-core_2.12-${DELTA_VERSION}.jar" -o "${SPARK_JARS_DIR}/delta-core_2.12.jar" && \
+    curl -fSL "https://repo1.maven.org/maven2/io/delta/delta-storage/${DELTA_VERSION}/delta-storage-${DELTA_VERSION}.jar" -o "${SPARK_JARS_DIR}/delta-storage.jar" && \
+    # 3. Spark SQL Kafka Connector + Clients
+    curl -fSL "https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.12/${KAFKA_VERSION}/spark-sql-kafka-0-10_2.12-${KAFKA_VERSION}.jar" -o "${SPARK_JARS_DIR}/spark-sql-kafka-0-10_2.12.jar" && \
+    curl -fSL "https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/${KAFKA_VERSION}/kafka-clients-${KAFKA_VERSION}.jar" -o "${SPARK_JARS_DIR}/kafka-clients.jar" && \
+    # (Opsional) Dependensi umum yang terkadang hilang
+    curl -fSL "https://repo1.maven.org/maven2/org/apache/commons/commons-pool2/2.11.1/commons-pool2-2.11.1.jar" -o "${SPARK_JARS_DIR}/commons-pool2.jar"
+
+
+# Pastikan permission JARs benar
+RUN chmod -R 755 ${SPARK_JARS_DIR}
+
+# Set Spark defaults untuk S3 dari file konfigurasi
+# File ini akan dibuat di root proyek dan disalin ke dalam image
+COPY ./spark-defaults.conf /opt/spark/conf/
+
+WORKDIR /app
+COPY ./src/spark_jobs ./src/spark_jobs
+
+# Install Python dependencies
+# You can add more libraries here, e.g., numpy, pandas, scikit-learn
+RUN pip install --no-cache-dir pyspark==3.4.0 delta-spark==2.4.0 numpy
+
+# Copy the application source code
+# ...existing code...
+
+# USER spark # Jika Anda set up user non-root

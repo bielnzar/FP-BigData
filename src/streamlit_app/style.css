@@ -1,0 +1,10 @@
+/* src/streamlit_app/style.css */
+/* Contoh: Mengubah warna header sidebar */
+div[data-testid="stSidebarNav"] ul {
+    /* background-color: #f0f2f6; */ /* Ganti dengan warna yang Anda suka */
+}
+
+/* Contoh: Styling untuk judul utama */
+h1 {
+    color: #007bff; /* Biru */
+}

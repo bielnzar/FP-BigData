@@ -1,0 +1,25 @@
+# final-project-bdl/Dockerfile.streamlit
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Instalasi dependensi sistem jika ada (jarang untuk Streamlit dasar)
+# RUN apt-get update && apt-get install -y --no-install-recommends \
+#     build-essential \
+#     && rm -rf /var/lib/apt/lists/*
+
+# Salin file requirements terlebih dahulu untuk caching layer Docker
+COPY ./src/streamlit_app/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Salin seluruh direktori aplikasi Streamlit
+COPY ./src/streamlit_app /app
+
+# Expose port yang digunakan Streamlit (default 8501)
+EXPOSE 8501
+
+# Perintah untuk menjalankan aplikasi Streamlit
+# Entrypoint untuk memastikan file dieksekusi dari direktori yang benar
+# dan mengizinkan parameter tambahan.
+ENTRYPOINT ["streamlit", "run"]
+CMD ["app.py", "--server.port=8501", "--server.address=0.0.0.0"]

@@ -1,6 +1,6 @@
 services:
   # ---------------- MinIO Service ----------------
-  minio_server:
+  minio-server:
     image: minio/minio:latest
     container_name: minio_server
     hostname: minio
@@ -21,7 +21,7 @@ services:
       retries: 3
 
   # ---------------- Zookeeper Service ----------------
-  zookeeper_server:
+  zookeeper-server:
     image: confluentinc/cp-zookeeper:7.3.2
     container_name: zookeeper_server
     hostname: zookeeper
@@ -30,9 +30,16 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      # ALLOW_ANONYMOUS_LOGIN: yes
+    healthcheck:
+      test: ["CMD", "sh", "-c", "echo 'srvr' | nc -w 2 localhost 2181 | grep Mode"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
   # ---------------- Kafka Service ----------------
-  kafka_server:
+  kafka-server:
     image: confluentinc/cp-kafka:7.3.2
     container_name: kafka_server
     hostname: kafka
@@ -42,8 +49,8 @@ services:
     volumes:
       - kafka_data:/var/lib/kafka/data
     depends_on:
-      zookeeper_server:
-        condition: service_started
+      zookeeper-server:
+        condition: service_healthy
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
@@ -55,11 +62,137 @@ services:
       KAFKA_LOG_RETENTION_HOURS: 168
       KAFKA_LOG_SEGMENT_BYTES: 1073741824
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
-      interval: 30s
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ---------------- Spark Master Service ----------------
+  spark-master:
+    build:
+      context: . # Konteks build adalah direktori root proyek
+      dockerfile: Dockerfile.spark # Menggunakan Dockerfile.spark yang kita buat
+    image: final-project/spark-custom:latest # Nama image yang akan dibangun
+    container_name: spark_master_server
+    hostname: spark-master
+    ports:
+      - "8080:8080"  # Spark Master Web UI
+      - "7077:7077"  # Spark Master RPC port (untuk worker dan spark-submit)
+    volumes:
+      - ./src/spark_jobs:/app/src/spark_jobs # Mount kode Spark untuk development (lebih cepat daripada build ulang image)
+      # - ./data:/app/data # Jika job Spark perlu akses data lokal langsung (biasanya tidak jika via Kafka/MinIO)
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=false
+      - SPARK_RPC_ENCRYPTION_ENABLED=false
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=false
+      - SPARK_SSL_ENABLED=false
+      # Tambahkan konfigurasi Spark lain jika perlu
+    depends_on:
+      minio-server:
+        condition: service_healthy
+      kafka-server:
+        condition: service_healthy # Spark job mungkin perlu Kafka saat start
+    command: "/opt/spark/bin/spark-class org.apache.spark.deploy.master.Master" # Perintah untuk start Master
+
+  # ---------------- Spark Worker Service ----------------
+  spark-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark # Menggunakan image yang sama dengan master
+    image: final-project/spark-custom:latest # Pastikan nama image sama
+    container_name: spark_worker_1
+    hostname: spark-worker-1 # Bisa dibuat beberapa worker dengan hostname berbeda
+    depends_on:
+      spark-master:
+        condition: service_started # Cukup service_started, karena worker akan mencoba mendaftar
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077 # Memberitahu worker di mana Master berada
+      - SPARK_WORKER_CORES=1  # Jumlah core yang dialokasikan worker ini (sesuaikan)
+      - SPARK_WORKER_MEMORY=1g # Jumlah memori yang dialokasikan worker ini (sesuaikan)
+      - SPARK_RPC_AUTHENTICATION_ENABLED=false
+      - SPARK_RPC_ENCRYPTION_ENABLED=false
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=false
+      - SPARK_SSL_ENABLED=false
+    volumes:
+      - ./src/spark_jobs:/app/src/spark_jobs # Mount kode Spark untuk development
+      # - ./data:/app/data
+    command: "/opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077" # Perintah start Worker
+
+  # # ---------------- Trino Coordinator Service ----------------
+  # trino:
+  #   image: trinodb/trino:435 # Gunakan versi Trino yang stabil (cek versi terbaru)
+  #   container_name: trino_coordinator
+  #   hostname: trino
+  #   ports:
+  #     - "8090:8090"  # Map port internal Trino 8090 ke port host 8090
+  #   volumes:
+  #     - ./trino_configs/etc:/etc/trino # Mount direktori konfigurasi Trino
+  #   depends_on:
+  #     minio-server: # Trino perlu MinIO untuk mengakses data Delta Lake
+  #       condition: service_healthy
+  #   # Anda bisa menambahkan healthcheck untuk Trino jika diinginkan
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8090/v1/info"] # Cek dari dalam kontainer
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 30s
+
+  # ---------------- Flask API Service ----------------
+  flask-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.flask
+    image: final-project/flask-api:latest
+    container_name: flask_api_server
+    hostname: flask-api
+    ports:
+      - "5000:5000" # Map port Flask ke host
+    volumes:
+      - ./src/flask_api:/app_api # Mount kode Flask untuk development
+    environment:
+      # Teruskan konfigurasi MinIO ke Flask API melalui environment variables
+      - MINIO_ENDPOINT=http://minio:9000 # Gunakan hostname internal MinIO
+      - MINIO_ACCESS_KEY=bosmuda
+      - MINIO_SECRET_KEY=Kelompok6
+      - MINIO_BUCKET_NAME=fp-bigdata
+      - FLASK_APP=app.py # Nama file utama Flask
+      - FLASK_ENV=development # Aktifkan mode debug Flask
+    depends_on:
+      minio-server: # Flask API akan membaca dari MinIO
+        condition: service_healthy
+    # Healthcheck sederhana untuk Flask dev server (mungkin tidak selalu akurat)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 20s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 30s
+
+# ... (layanan streamlit-app perlu dimodifikasi) ...
+  streamlit-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    image: final-project/streamlit-app:latest
+    container_name: streamlit_dashboard
+    hostname: streamlit-app
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./src/streamlit_app:/app
+    depends_on:
+      # trino: # Comment out atau hapus jika Trino tidak dipakai
+      #   condition: service_started
+      flask-api: # Streamlit sekarang bergantung pada Flask API untuk data
+        condition: service_started # Atau service_healthy jika Flask punya healthcheck baik
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      # Tambahkan env var untuk URL Flask API jika Streamlit perlu tahu
+      - FLASK_API_BASE_URL=http://flask-api:5000 # Streamlit akan panggil service Flask API
 
 volumes:
   minio_data:
