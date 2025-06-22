@@ -1,6 +1,6 @@
 services:
   # ---------------- MinIO Service ----------------
-  minio-server:
+  minio:
     image: minio/minio:latest
     container_name: minio_server
     hostname: minio
@@ -21,7 +21,7 @@ services:
       retries: 3
 
   # ---------------- Zookeeper Service ----------------
-  zookeeper-server:
+  zookeeper:
     image: confluentinc/cp-zookeeper:7.3.2
     container_name: zookeeper_server
     hostname: zookeeper
@@ -39,7 +39,7 @@ services:
       start_period: 40s
 
   # ---------------- Kafka Service ----------------
-  kafka-server:
+  kafka:
     image: confluentinc/cp-kafka:7.3.2
     container_name: kafka_server
     hostname: kafka
@@ -49,7 +49,7 @@ services:
     volumes:
       - kafka_data:/var/lib/kafka/data
     depends_on:
-      zookeeper-server:
+      zookeeper:
         condition: service_healthy
     environment:
       KAFKA_BROKER_ID: 1
@@ -90,9 +90,9 @@ services:
       - SPARK_SSL_ENABLED=false
       # Tambahkan konfigurasi Spark lain jika perlu
     depends_on:
-      minio-server:
+      minio:
         condition: service_healthy
-      kafka-server:
+      kafka:
         condition: service_healthy # Spark job mungkin perlu Kafka saat start
     command: "/opt/spark/bin/spark-class org.apache.spark.deploy.master.Master" # Perintah untuk start Master
 
@@ -121,28 +121,28 @@ services:
       # - ./data:/app/data
     command: "/opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077" # Perintah start Worker
 
-  # # ---------------- Trino Coordinator Service ----------------
-  # trino:
-  #   image: trinodb/trino:435 # Gunakan versi Trino yang stabil (cek versi terbaru)
-  #   container_name: trino_coordinator
-  #   hostname: trino
-  #   ports:
-  #     - "8090:8090"  # Map port internal Trino 8090 ke port host 8090
-  #   volumes:
-  #     - ./trino_configs/etc:/etc/trino # Mount direktori konfigurasi Trino
-  #   depends_on:
-  #     minio-server: # Trino perlu MinIO untuk mengakses data Delta Lake
-  #       condition: service_healthy
-  #   # Anda bisa menambahkan healthcheck untuk Trino jika diinginkan
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8090/v1/info"] # Cek dari dalam kontainer
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 5
-  #     start_period: 30s
+  # ---------------- Trino Coordinator Service ----------------
+  trino:
+    image: trinodb/trino:435 # Gunakan versi Trino yang stabil (cek versi terbaru)
+    container_name: trino_coordinator
+    hostname: trino
+    ports:
+      - "8090:8090"  # Map port internal Trino 8090 ke port host 8090
+    volumes:
+      - ./trino_configs/etc:/etc/trino # Mount direktori konfigurasi Trino
+    depends_on:
+      minio: # Trino perlu MinIO untuk mengakses data Delta Lake
+        condition: service_healthy
+    # Anda bisa menambahkan healthcheck untuk Trino jika diinginkan
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/v1/info"] # Cek dari dalam kontainer
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   # ---------------- Flask API Service ----------------
-  flask-api:
+  flask:
     build:
       context: .
       dockerfile: Dockerfile.flask
@@ -162,7 +162,7 @@ services:
       - FLASK_APP=app.py # Nama file utama Flask
       - FLASK_ENV=development # Aktifkan mode debug Flask
     depends_on:
-      minio-server: # Flask API akan membaca dari MinIO
+      minio: # Flask API akan membaca dari MinIO
         condition: service_healthy
     # Healthcheck sederhana untuk Flask dev server (mungkin tidak selalu akurat)
     healthcheck:
@@ -173,7 +173,7 @@ services:
       start_period: 30s
 
 # ... (layanan streamlit-app perlu dimodifikasi) ...
-  streamlit-app:
+  streamlit:
     build:
       context: .
       dockerfile: Dockerfile.streamlit
@@ -187,7 +187,7 @@ services:
     depends_on:
       # trino: # Comment out atau hapus jika Trino tidak dipakai
       #   condition: service_started
-      flask-api: # Streamlit sekarang bergantung pada Flask API untuk data
+      flask: # Streamlit sekarang bergantung pada Flask API untuk data
         condition: service_started # Atau service_healthy jika Flask punya healthcheck baik
     environment:
       - STREAMLIT_SERVER_PORT=8501
