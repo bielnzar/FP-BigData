@@ -81,3 +81,107 @@ Untuk membangun platform ini, digunakan serangkaian teknologi open-source yang t
 - Penyajian Aplikasi: Streamlit Dashboard mengambil data untuk visualisasi (grafik, peta, tabel) dengan menjalankan kueri ke Trino. Saat pengguna membutuhkan prediksi, dashboard akan memanggil Flask API di belakang layar. Keduanya dijalankan sebagai container Docker yang terpisah.
 
 - Interaksi Pengguna: Pengguna akhir (analis, pembuat kebijakan) berinteraksi hanya dengan Streamlit Dashboard yang menyajikan gabungan dari visualisasi data historis dan prediksi dari model.
+
+## Langkah Penggunaan
+
+### 1. Persiapan Awal
+- **Clone Repository**:
+  ```bash
+  git clone https://github.com/bielnzar/FP-BigData.git
+  cd FP-BigData
+  ```
+- **Download Dataset**: Buat folder `data` dan pastikan dataset dari Kaggle sudah diunduh ke dalamnya.
+  ```bash
+  # Pastikan Anda memiliki Kaggle API token (kaggle.json) di ~/.kaggle/
+  mkdir -p data
+  # Jalankan skrip download atau letakkan file CSV secara manual di folder data/
+  ```
+- **Jalankan Platform**: Perintah ini akan membangun image Docker dan menjalankan semua layanan (Kafka, Spark, MinIO, dll.).
+  ```bash
+  docker-compose up -d --build
+  ```
+
+### 2. Alur Kerja Data
+1.  **Kirim Data ke Kafka (Producer)**: Buka terminal baru dan jalankan skrip untuk memulai kedua producer secara otomatis.
+    ```bash
+    bash src/producer/start_producers.sh
+    ```
+    *Skrip ini akan membuat ulang topic Kafka dan mulai mengirim data dari file CSV di folder `data/`.*
+
+2.  **Simpan Data ke MinIO (Consumer)**: Buka terminal baru yang lain dan jalankan consumer untuk setiap topic.
+    ```bash
+    # Di satu terminal, jalankan consumer untuk statistik kesehatan
+    python src/consumer/consumer.py --topic global-health-stats --group health-consumer-group --batch-size 1000 --batch-timeout 60
+
+    # Di terminal lain, jalankan consumer untuk abstrak medis
+    python src/consumer/consumer.py --topic medical-abstracts --group abstract-consumer-group --batch-size 500 --batch-timeout 60
+    ```
+    *Biarkan consumer berjalan untuk menangkap aliran data. Hentikan dengan `Ctrl+C` jika sudah selesai.*
+
+3.  **Proses Data dengan Spark**: Jalankan Spark jobs secara berurutan menggunakan skrip yang disediakan.
+    ```bash
+    # 1. Proses data dari Bronze ke Silver
+    bash src/spark_jobs/run_spark_job.sh bronze_to_silver.py
+
+    # 2. Proses data dari Silver ke Gold (agregasi)
+    bash src/spark_jobs/run_spark_job.sh silver_to_gold.py
+
+    # 3. Latih model Machine Learning
+    bash src/spark_jobs/run_spark_job.sh train_model.py
+    ```
+    *Catatan: Setelah melatih model, restart layanan API agar model yang baru dapat dimuat: `docker-compose restart flask-api`*
+
+### 3. Akses Aplikasi
+- **Dashboard Analitik**: Buka browser dan akses Streamlit Dashboard di `http://localhost:8501`.
+- **MinIO Console**: Untuk melihat file di Data Lake, akses `http://localhost:9001` (Login: `minioadmin`/`minioadmin`).
+- **Flask API Health Check**: Untuk memeriksa status model di API, akses `http://localhost:5001/health`.
+
+## Struktur Folder
+
+```
+FP-BigData/
+├── data/                     # Folder untuk menyimpan dataset (dibuat manual)
+├── docker-compose.yml
+├── README.md
+├── images/
+│   └── revisi-arsitektur3.png
+├── scripts/
+│   └── download_datasets.py    # Contoh skrip utilitas
+├── trino/
+│   └── etc/
+│       ├── config.properties
+│       ├── node.properties
+│       └── catalog/
+│           └── hive.properties
+└── src/
+    ├── api/
+    │   ├── Dockerfile
+    │   ├── requirements.txt
+    │   └── app.py
+    ├── consumer/
+    │   ├── Dockerfile
+    │   ├── requirements.txt
+    │   └── consumer.py
+    ├── dashboard/
+    │   ├── Dockerfile
+    │   ├── requirements.txt
+    │   ├── app.py
+    │   ├── utils.py
+    │   └── pages/
+    │       ├── 1_Country_Summary.py
+    │       ├── 2_Yearly_Trends.py
+    │       ├── 3_Research_vs_Impact.py
+    │       └── 4_Predictive_Model.py
+    ├── producer/
+    │   ├── Dockerfile
+    │   ├── requirements.txt
+    │   ├── producer.py
+    │   └── start_producers.sh
+    └── spark_jobs/
+        ├── Dockerfile
+        ├── requirements.txt
+        ├── bronze_to_silver.py
+        ├── silver_to_gold.py
+        ├── train_model.py
+        └── run_spark_job.sh
+```
