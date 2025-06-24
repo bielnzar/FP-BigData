@@ -12,6 +12,10 @@
 | Muhammad Hildan Adiwena       | 5027231077 |
 | Mochamad Fadhil Saifullah      | 5027231068 |
 
+## Abstrak
+
+Proyek ini membangun sebuah platform analitik data end-to-end untuk menganalisis disparitas kesehatan global. Dengan memanfaatkan dataset terstruktur mengenai statistik kesehatan global dan data tidak terstruktur dari abstrak medis, platform ini bertujuan untuk mengidentifikasi hubungan antara faktor sosio-ekonomi, infrastruktur kesehatan, dan beban penyakit di berbagai negara. Arsitektur modern berbasis teknologi open-source seperti Apache Kafka, Apache Spark, Delta Lake di atas MinIO, Trino, Flask, dan Streamlit diorkestrasi menggunakan Docker. Alur kerja mencakup ingest data secara real-time, pemrosesan ETL dengan Spark, penyimpanan di Data Lakehouse (medallion architecture), pelatihan model machine learning untuk prediksi indikator kesehatan, dan penyajian wawasan melalui dashboard interaktif. Tujuan akhirnya adalah menyediakan alat bantu bagi para pembuat kebijakan untuk merancang intervensi kesehatan yang lebih efektif dan tepat sasaran.
+
 ## Platform Analitik Prediktif untuk Pengentasan Disparitas Kesehatan Global
 
 Dataset yang digunakan 

@@ -1,8 +1,0 @@
-streamlit
-pandas
-plotly
-numpy
-
-pyspark==3.4.0
-delta-spark==2.4.0
-s3fs
