@@ -45,9 +45,44 @@ summary_query = f"SELECT * FROM read_parquet('s3a://gold/country-health-summary/
 df_summary = query_duckdb(summary_query)
 
 if not df_summary.empty:
-    st.dataframe(df_summary.T.rename(columns={0: 'Value'}))
+    summary = df_summary.iloc[0]
 
-    with st.expander("💡 Penjelasan Kolom pada Tabel Ringkasan"):
+    st.markdown("---")
+    st.subheader("Indikator Kunci")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric(
+            label="Rata-rata Angka Kematian",
+            value=f"{summary['Avg_Mortality_Rate_Percent']:.2f}%"
+        )
+        st.metric(
+            label="Akses Layanan Kesehatan",
+            value=f"{summary['Avg_Healthcare_Access_Percent']:.2f}%"
+        )
+    with col2:
+        st.metric(
+            label="Rata-rata DALYs",
+            value=f"{int(summary['Avg_DALYs']):,}"
+        )
+        st.metric(
+            label="Dokter per 1000 Penduduk",
+            value=f"{summary['Avg_Doctors_per_1000']:.2f}"
+        )
+    with col3:
+        st.metric(
+            label="Total Populasi Terdampak",
+            value=f"{int(summary['Total_Population_Affected_Overall']):,}"
+        )
+        st.metric(
+            label="Pendapatan per Kapita (USD)",
+            value=f"${int(summary['Avg_Per_Capita_Income_USD']):,}"
+        )
+
+    st.markdown("---")
+
+    with st.expander("Lihat Detail Data Ringkasan & Penjelasan Kolom"):
+        st.dataframe(df_summary.T.rename(columns={0: 'Value'}))
         st.markdown("""
         Tabel di atas menampilkan nilai rata-rata atau total dari berbagai metrik kesehatan dan sosio-ekonomi untuk negara yang dipilih selama periode data yang tersedia.
         

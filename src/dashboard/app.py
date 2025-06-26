@@ -12,23 +12,35 @@ st.sidebar.success("Pilih halaman analisis di atas.")
 
 st.markdown(
     """
-    Selamat datang di Platform Analitik Kesehatan Global.
+    Selamat datang di **Platform Analitik Kesehatan Global**.
     
-    Platform ini dibangun untuk menganalisis disparitas kesehatan di seluruh dunia dengan memanfaatkan dataset terstruktur (statistik kesehatan), semi-terstruktur (abstrak medis), dan tidak terstruktur (gambar).
+    Platform ini dirancang untuk menjelajahi, menganalisis, dan memprediksi tren kesehatan di seluruh dunia. Kami memanfaatkan kekuatan Big Data untuk mengubah data mentah menjadi wawasan yang dapat ditindaklanjuti.
     
-    **👈 Pilih halaman dari sidebar** untuk mulai menjelajahi berbagai wawasan:
-    - **Ringkasan per Negara**: Lihat metrik kesehatan utama yang diagregasi per negara.
-    - **Tren Tahunan**: Analisis tren penyakit secara global dari tahun ke tahun.
-    - **Analisis Abstrak Medis**: Eksplorasi kata kunci dari abstrak medis berdasarkan kategori penyakit.
-    - **Model Prediktif**: Gunakan model Machine Learning untuk memprediksi angka kematian.
+    **👈 Pilih halaman dari sidebar** untuk mulai menjelajahi berbagai analisis:
+    - **Ringkasan per Negara**: Dapatkan potret kesehatan suatu negara dalam sekejap.
+    - **Tren Tahunan**: Lihat bagaimana metrik kesehatan global berubah dari waktu ke waktu.
+    - **Analisis Abstrak Medis**: Temukan fokus penelitian medis terkini melalui analisis teks.
+    - **Model Prediktif**: Gunakan model Machine Learning kami untuk memprediksi angka kematian berdasarkan berbagai faktor.
     
-    ### Teknologi yang Digunakan
-    Platform ini didukung oleh arsitektur data modern yang mencakup:
-    - **Apache Kafka**: Untuk ingest data secara real-time.
-    - **MinIO**: Sebagai Data Lake (object storage) untuk menyimpan semua data (Bronze, Silver, Gold).
-    - **Apache Spark**: Untuk pemrosesan data (ETL) dan melatih model Machine Learning.
-    - **DuckDB**: Sebagai mesin kueri analitik cepat yang berjalan di dalam dashboard untuk membaca data langsung dari MinIO.
-    - **Flask**: Untuk menyajikan model Machine Learning sebagai API.
-    - **Streamlit**: Untuk membangun dashboard interaktif ini.
+    ---
+    
+    ### Arsitektur & Teknologi
+    Platform ini dibangun di atas tumpukan teknologi modern yang tangguh dan skalabel:
     """
 )
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.subheader("📊 Ingest & Storage")
+    st.markdown("- **Apache Kafka**: Aliran data real-time.")
+    st.markdown("- **MinIO**: Data Lake berbasis Object Storage.")
+
+with col2:
+    st.subheader("⚙️ Processing & Analytics")
+    st.markdown("- **Apache Spark**: ETL dan pemrosesan data skala besar.")
+    st.markdown("- **DuckDB**: Mesin kueri analitik super cepat.")
+
+with col3:
+    st.subheader("🚀 Serving & Visualization")
+    st.markdown("- **Flask**: API untuk menyajikan model ML.")
+    st.markdown("- **Streamlit**: Dashboard interaktif yang sedang Anda lihat.")

@@ -8,7 +8,7 @@ import nltk
 from collections import Counter
 import re
 
-st.set_page_config(page_title="Analisis Abstrak", layout="wide")
+st.set_page_config(page_title="Analisis Abstrak Medis", layout="wide")
 
 st.title("🔬 Analisis Teks Abstrak Medis")
 st.markdown("""
@@ -16,7 +16,13 @@ Halaman ini memungkinkan Anda untuk mengeksplorasi kata kunci yang paling sering
 Pilih kategori penyakit untuk menghasilkan *word cloud* dan melihat istilah yang paling dominan.
 """)
 
-stop_words = set(nltk.corpus.stopwords.words('english'))
+# Inisialisasi stopwords
+try:
+    stop_words = set(nltk.corpus.stopwords.words('english'))
+except LookupError:
+    st.info("Mengunduh data NLTK (stopwords)...")
+    nltk.download('stopwords')
+    stop_words = set(nltk.corpus.stopwords.words('english'))
 
 @st.cache_data(ttl=3600)
 def load_labels():
@@ -46,6 +52,12 @@ if selected_label:
     if not texts:
         st.info(f"Tidak ada data teks untuk kategori '{selected_label}'.")
     else:
+        st.metric(
+            label="Jumlah Abstrak Dianalisis",
+            value=f"{len(texts):,}"
+        )
+        st.markdown("---")
+
         st.subheader(f"Analisis Kata Kunci untuk: {selected_label.title()}")
         
         full_text = " ".join(texts)
@@ -79,7 +91,7 @@ if selected_label:
             st.altair_chart(chart, use_container_width=True)
 
         st.markdown("---")
-        st.subheader(f"Beberapa Abstrak untuk Kategori: {selected_label.title()}")
+        st.subheader(f"Contoh Teks Abstrak")
         st.markdown("Berikut adalah beberapa abstrak yang relevan dengan kategori yang dipilih, digabungkan menjadi satu paragraf besar untuk memberikan gambaran:")
 
         combined_texts = " ".join(texts[:5])

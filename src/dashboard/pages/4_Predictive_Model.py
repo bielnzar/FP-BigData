@@ -113,7 +113,16 @@ if submitted:
         response = requests.post(f"{FLASK_API_URL}/predict", json=payload)
         if response.status_code == 200:
             prediction = response.json()
-            st.success(f"Prediksi Angka Kematian: **{prediction.get('mortality_rate_prediction'):.2f}%**")
+            st.subheader("📈 Hasil Prediksi")
+            
+            col1, col2, col3 = st.columns([1,2,1])
+            with col2:
+                st.metric(
+                    label="Prediksi Angka Kematian",
+                    value=f"{prediction.get('mortality_rate_prediction'):.2f}%"
+                )
+            
+            st.info(f"Berdasarkan skenario yang diberikan, model memprediksi angka kematian sebesar **{prediction.get('mortality_rate_prediction'):.2f}%**.")
         else:
             st.error(f"Gagal mendapatkan prediksi. Status: {response.status_code}, Pesan: {response.text}")
     except requests.exceptions.ConnectionError:
