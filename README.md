@@ -67,7 +67,7 @@ Untuk membangun platform ini, digunakan serangkaian teknologi open-source yang t
 
 ### Diagram Arsitektur Solusi
 
-![Image-Arsitektur](https://https://github.com/bielnzar/FP-BigData/tree/main/Arsitektur-Fiks.png)
+![Image-Arsitektur](https://github.com/bielnzar/FP-BigData/blob/main/Arsitektur-Fiks.png)
 
 ## Penjelasan Rinci Alur Kerja
 
