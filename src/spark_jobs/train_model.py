@@ -90,7 +90,6 @@ def main():
     print(f"Root Mean Squared Error (RMSE) = {rmse}")
     print(f"R-squared (R2) = {r2}")
 
-    # --- 5. Menyimpan Model ---
     print(f"Saving the trained model to: {model_save_path}")
     model.write().overwrite().save(model_save_path)
     print("Model saved successfully.")

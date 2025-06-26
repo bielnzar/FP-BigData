@@ -1,0 +1,12 @@
+.env
+
+venv/
+__pycache__/
+*.pyc
+
+.DS_Store
+Thumbs.db
+
+data/Global Health Statistics.csv
+data/medical_text_classification_fake_dataset.csv
+

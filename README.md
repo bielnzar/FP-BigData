@@ -14,13 +14,14 @@
 
 ## Abstrak
 
-Proyek ini membangun sebuah platform analitik data end-to-end untuk menganalisis disparitas kesehatan global. Dengan memanfaatkan dataset terstruktur mengenai statistik kesehatan global dan data tidak terstruktur dari abstrak medis, platform ini bertujuan untuk mengidentifikasi hubungan antara faktor sosio-ekonomi, infrastruktur kesehatan, dan beban penyakit di berbagai negara. Arsitektur modern berbasis teknologi open-source seperti Apache Kafka, Apache Spark, Delta Lake di atas MinIO, Trino, Flask, dan Streamlit diorkestrasi menggunakan Docker. Alur kerja mencakup ingest data secara real-time, pemrosesan ETL dengan Spark, penyimpanan di Data Lakehouse (medallion architecture), pelatihan model machine learning untuk prediksi indikator kesehatan, dan penyajian wawasan melalui dashboard interaktif. Tujuan akhirnya adalah menyediakan alat bantu bagi para pembuat kebijakan untuk merancang intervensi kesehatan yang lebih efektif dan tepat sasaran.
+Proyek ini membangun sebuah platform analitik data end-to-end untuk menganalisis disparitas kesehatan global. Dengan memanfaatkan dataset terstruktur mengenai statistik kesehatan global, data semi-terstruktur dari abstrak medis, dan data tidak terstruktur berupa gambar bendera, platform ini bertujuan untuk mengidentifikasi hubungan antara faktor sosio-ekonomi, infrastruktur kesehatan, dan beban penyakit di berbagai negara. Arsitektur modern berbasis teknologi open-source seperti Apache Kafka, Apache Spark, MinIO, DuckDB, Flask, dan Streamlit diorkestrasi menggunakan Docker. Alur kerja mencakup ingest data, pemrosesan ETL dengan Spark, penyimpanan dalam Data Lakehouse (arsitektur medallion dengan format Parquet), pelatihan model machine learning untuk prediksi angka kematian, dan penyajian wawasan melalui dashboard interaktif. Tujuan akhirnya adalah menyediakan alat bantu bagi para pembuat kebijakan untuk merancang intervensi kesehatan yang lebih efektif dan tepat sasaran.
 
 ## Platform Analitik Prediktif untuk Pengentasan Disparitas Kesehatan Global
 
-Dataset yang digunakan 
-- Terstuktur: [Global Health Statistics](https://www.kaggle.com/datasets/malaiarasugraj/global-health-statistics)
-- Tidak Terstruktur: [Medical Abstract Classification Dataset](https://www.kaggle.com/datasets/viswaprakash1990/medical-abstract-classification-dataset)
+Dataset yang digunakan:
+- **Terstruktur**: [Global Health Statistics](https://www.kaggle.com/datasets/malaiarasugraj/global-health-statistics) - Data statistik kesehatan dalam format CSV.
+- **Semi-Terstruktur**: [Medical Abstract Classification Dataset](https://www.kaggle.com/datasets/viswaprakash1990/medical-abstract-classification-dataset) - Teks abstrak medis dengan label kategori dalam format JSON/CSV.
+- **Tidak Terstruktur**: Gambar Bendera Negara - Dihasilkan secara dinamis melalui skrip `data/fetch_flags.py` dari API eksternal dan disimpan sebagai file PNG di MinIO.
 
 ## Pendahuluan
 
@@ -36,7 +37,7 @@ Proyek ini bertujuan untuk menjawab pertanyaan utama: Bagaimana faktor-faktor so
 
 1. Merancang dan mendeskripsikan arsitektur platform analitik Big Data yang modern, skalabel, dan efisien menggunakan teknologi open-source.
 
-2. Mengimplementasikan pipeline data untuk memproses dataset "Global Health Statistics".
+2. Mengimplementasikan pipeline data untuk memproses dataset "Global Health Statistics" dan "Medical Abstracts".
 
 3. Mengembangkan model Machine Learning untuk memprediksi indikator kesehatan kunci berdasarkan faktor-faktor tertentu.
 
@@ -50,11 +51,11 @@ Untuk membangun platform ini, digunakan serangkaian teknologi open-source yang t
 
 - Apache Spark: Merupakan mesin komputasi terpadu untuk pemrosesan data skala besar. Spark adalah "otak" dari pipeline ini, digunakan untuk semua tugas ETL (Extract, Transform, Load), analisis data, dan pelatihan model machine learning.
 
-- MinIO: Digunakan sebagai fondasi penyimpanan Data Lake. MinIO adalah sistem object storage berkinerja tinggi yang kompatibel dengan Amazon, memungkinkan penyimpanan data dalam skala besar dengan biaya yang efektif.
+- MinIO: Digunakan sebagai fondasi penyimpanan Data Lake. MinIO adalah sistem object storage berkinerja tinggi yang kompatibel dengan Amazon S3, memungkinkan penyimpanan data dalam skala besar dengan biaya yang efektif.
 
-- Delta Lake: Merupakan lapisan penyimpanan transaksional yang berjalan di atas MinIO. Delta Lake memberikan keandalan transaksi ACID, tata kelola skema, dan performa pada Data Lake, mengatasi banyak keterbatasan pada data lake tradisional.
+- Data Lakehouse (Parquet): Kami menerapkan arsitektur Medallion (Bronze, Silver, Gold) di atas MinIO. Data disimpan dalam format Parquet, sebuah format kolom yang efisien dan teroptimasi untuk beban kerja analitik.
 
-- Trino: Mesin kueri SQL terdistribusi yang dioptimalkan untuk analitik interaktif berlatensi rendah. Trino berfungsi sebagai "jembatan" kueri yang cepat antara Data Lake dan dashboard.
+- DuckDB: Merupakan database analitik dalam-proses (in-process) yang sangat cepat. Dalam arsitektur ini, DuckDB berjalan langsung di dalam container Streamlit, berfungsi sebagai mesin kueri yang sangat efisien untuk membaca data Parquet langsung dari MinIO untuk analisis interaktif di dashboard. Ini menyederhanakan arsitektur secara signifikan.
 
 - Flask: Kerangka kerja web mikro yang ringan dan fleksibel, digunakan secara spesifik untuk menyajikan model Machine Learning yang telah dilatih sebagai sebuah REST API yang efisien.
 
@@ -66,21 +67,26 @@ Untuk membangun platform ini, digunakan serangkaian teknologi open-source yang t
 
 ### Diagram Arsitektur Solusi
 
-![Image-Arsitektur](https://github.com/bielnzar/FP-BigData/blob/main/images/revisi-arsitektur3.png)
+![Image-Arsitektur](https://https://github.com/bielnzar/FP-BigData/tree/main/Arsitektur-Fiks.png)
 
 ## Penjelasan Rinci Alur Kerja
 
-- Ingest (Pengumpulan Data): Sebuah skrip Python (Publisher) membaca dataset `.csv/.json/.txt` dan mempublikasikannya baris per baris sebagai pesan ke Apache Kafka untuk mensimulasikan aliran data.
+- **Ingest (Pengumpulan Data)**: Skrip Python (`producer.py`) membaca dataset CSV dan mempublikasikannya baris per baris sebagai pesan ke topik Apache Kafka, mensimulasikan aliran data.
 
-- Pemrosesan oleh Spark: Apache Spark membaca data dari Kafka. Spark melakukan proses ETL (membersihkan, mengubah, dan memperkaya data) dan menyimpannya ke Delta Lake di atas MinIO dengan struktur medallion (Bronze, Silver, Gold).
+- **Landing**: Skrip Python (`consumer.py`) mendengarkan topik Kafka, mengumpulkan pesan dalam batch, dan menyimpannya sebagai file JSONL di lapisan **Bronze** pada Data Lake MinIO.
 
-- Pelatihan Model: Spark juga bertanggung jawab untuk melatih model Machine Learning menggunakan data bersih dari zona Silver di Data Lake. Model yang sudah jadi disajikan melalui Flask API.
+- **Pemrosesan ETL (Spark)**:
+    - **Bronze ke Silver**: Spark job (`bronze_to_silver.py`) membaca data mentah dari lapisan Bronze, melakukan pembersihan (casting tipe data, penanganan null), standardisasi, dan deduplikasi, lalu menyimpannya dalam format Parquet di lapisan **Silver**.
+    - **Silver ke Gold**: Spark job (`silver_to_gold.py`) membaca data bersih dari lapisan Silver, melakukan agregasi dan transformasi bisnis untuk membuat tabel-tabel analitik (misalnya, ringkasan per negara), dan menyimpannya di lapisan **Gold** dalam format Parquet.
 
-- Kueri oleh Trino: Trino terhubung ke Data Lake (Delta Lake di MinIO) untuk menyediakan akses kueri SQL yang sangat cepat. Trino dirancang khusus untuk beban kerja analitik interaktif, membuatnya sempurna untuk dashboard.
+- **Pelatihan Model (Spark & Flask)**:
+    - Spark job (`train_model.py`) menggunakan data dari lapisan Silver untuk melatih model Machine Learning (RandomForest) dan menyimpan model yang telah dilatih ke MinIO.
+    - Sebuah Flask API (`api/app.py`) memuat model tersebut dan menyediakannya melalui endpoint `/predict`.
 
-- Penyajian Aplikasi: Streamlit Dashboard mengambil data untuk visualisasi (grafik, peta, tabel) dengan menjalankan kueri ke Trino. Saat pengguna membutuhkan prediksi, dashboard akan memanggil Flask API di belakang layar. Keduanya dijalankan sebagai container Docker yang terpisah.
-
-- Interaksi Pengguna: Pengguna akhir (analis, pembuat kebijakan) berinteraksi hanya dengan Streamlit Dashboard yang menyajikan gabungan dari visualisasi data historis dan prediksi dari model.
+- **Penyajian & Visualisasi (DuckDB & Streamlit)**:
+    - Dashboard Streamlit (`dashboard/`) berfungsi sebagai antarmuka pengguna.
+    - DuckDB, yang berjalan di dalam container Streamlit, terhubung langsung ke lapisan **Gold** di MinIO untuk menjalankan kueri analitik secara cepat dan efisien.
+    - Saat pengguna berinteraksi, dashboard mengambil data untuk visualisasi (grafik, tabel) dengan menjalankan kueri via DuckDB. Untuk prediksi, dashboard memanggil Flask API di belakang layar.
 
 ## Langkah Penggunaan
 
@@ -90,11 +96,10 @@ Untuk membangun platform ini, digunakan serangkaian teknologi open-source yang t
   git clone https://github.com/bielnzar/FP-BigData.git
   cd FP-BigData
   ```
-- **Download Dataset**: Buat folder `data` dan pastikan dataset dari Kaggle sudah diunduh ke dalamnya.
+- **Download Dataset**: Buat folder `data` dan letakkan file `Global_Health_Statistics.csv` dan `Medical_Abstracts.csv` di dalamnya.
   ```bash
-  # Pastikan Anda memiliki Kaggle API token (kaggle.json) di ~/.kaggle/
   mkdir -p data
-  # Jalankan skrip download atau letakkan file CSV secara manual di folder data/
+  # Letakkan file CSV secara manual di folder data/
   ```
 - **Jalankan Platform**: Perintah ini akan membangun image Docker dan menjalankan semua layanan (Kafka, Spark, MinIO, dll.).
   ```bash
@@ -102,23 +107,28 @@ Untuk membangun platform ini, digunakan serangkaian teknologi open-source yang t
   ```
 
 ### 2. Alur Kerja Data
-1.  **Kirim Data ke Kafka (Producer)**: Buka terminal baru dan jalankan skrip untuk memulai kedua producer secara otomatis.
+1.  **Unduh Gambar Bendera (Opsional, sekali jalan)**: Jalankan skrip ini untuk mengunduh bendera negara dan menyimpannya di MinIO.
+    ```bash
+    python3 data/fetch_flags.py
+    ```
+
+2.  **Kirim Data ke Kafka (Producer)**: Buka terminal baru dan jalankan skrip untuk memulai kedua producer secara otomatis.
     ```bash
     bash src/producer/start_producers.sh
     ```
-    *Skrip ini akan membuat ulang topic Kafka dan mulai mengirim data dari file CSV di folder `data/`.*
+    *Skrip ini akan membuat ulang topik Kafka dan mulai mengirim data dari file CSV di folder `data/` ke Kafka.*
 
-2.  **Simpan Data ke MinIO (Consumer)**: Buka terminal baru yang lain dan jalankan consumer untuk setiap topic.
+3.  **Simpan Data ke MinIO (Consumer)**: Buka dua terminal baru dan jalankan consumer untuk setiap topik.
     ```bash
-    # Di satu terminal, jalankan consumer untuk statistik kesehatan
-    python src/consumer/consumer.py --topic global-health-stats --group health-consumer-group --batch-size 1000 --batch-timeout 60
+    # Di terminal pertama, jalankan consumer untuk statistik kesehatan
+    python3 src/consumer/consumer.py --topic global-health-stats --group health-consumer-group --batch-size 1000 --batch-timeout 60
 
-    # Di terminal lain, jalankan consumer untuk abstrak medis
-    python src/consumer/consumer.py --topic medical-abstracts --group abstract-consumer-group --batch-size 500 --batch-timeout 60
+    # Di terminal kedua, jalankan consumer untuk abstrak medis
+    python3 src/consumer/consumer.py --topic medical-abstracts --group abstract-consumer-group --batch-size 500 --batch-timeout 60
     ```
-    *Biarkan consumer berjalan untuk menangkap aliran data. Hentikan dengan `Ctrl+C` jika sudah selesai.*
+    *Biarkan consumer berjalan untuk menangkap aliran data dari Kafka dan menyimpannya ke lapisan Bronze di MinIO. Hentikan dengan `Ctrl+C` jika sudah selesai.*
 
-3.  **Proses Data dengan Spark**: Jalankan Spark jobs secara berurutan menggunakan skrip yang disediakan.
+4.  **Proses Data dengan Spark**: Jalankan Spark jobs secara berurutan menggunakan skrip yang disediakan.
     ```bash
     # 1. Proses data dari Bronze ke Silver
     bash src/spark_jobs/run_spark_job.sh bronze_to_silver.py
@@ -140,19 +150,15 @@ Untuk membangun platform ini, digunakan serangkaian teknologi open-source yang t
 
 ```
 FP-BigData/
-├── data/                     # Folder untuk menyimpan dataset (dibuat manual)
+├── data/
+│   ├── Global_Health_Statistics.csv  # (Download dulu)
+│   ├── Medical_Abstracts.csv         # (Download dulu)
+│   ├── download_dataset.sh
+│   └── fetch_flags.py
 ├── docker-compose.yml
 ├── README.md
 ├── images/
 │   └── revisi-arsitektur3.png
-├── scripts/
-│   └── download_datasets.py    # Contoh skrip utilitas
-├── trino/
-│   └── etc/
-│       ├── config.properties
-│       ├── node.properties
-│       └── catalog/
-│           └── hive.properties
 └── src/
     ├── api/
     │   ├── Dockerfile
@@ -170,7 +176,7 @@ FP-BigData/
     │   └── pages/
     │       ├── 1_Country_Summary.py
     │       ├── 2_Yearly_Trends.py
-    │       ├── 3_Research_vs_Impact.py
+    │       ├── 3_Abstract_Analys.py
     │       └── 4_Predictive_Model.py
     ├── producer/
     │   ├── Dockerfile

@@ -1,5 +1,6 @@
 streamlit
 pandas
 requests
-trino
-altair
+duckdb
+wordcloud
+nltk==3.8.1

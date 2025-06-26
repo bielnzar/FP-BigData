@@ -1,14 +1,14 @@
 import streamlit as st
 import requests
-from utils import FLASK_API_URL
+import pandas as pd
+from utils import FLASK_API_URL, query_duckdb
 
 st.set_page_config(page_title="Model Prediktif", layout="wide")
 
 st.title("🔮 Prediksi Angka Kematian")
 st.markdown("""
-Halaman ini memungkinkan Anda untuk berinteraksi langsung dengan model Machine Learning yang telah dilatih. 
-Masukkan berbagai faktor sosio-ekonomi dan kesehatan di bawah ini untuk mendapatkan prediksi angka kematian. 
-Ini mensimulasikan bagaimana seorang analis dapat menggunakan model untuk skenario "what-if".
+Halaman ini memungkinkan Anda berinteraksi dengan model Machine Learning. 
+Cukup pilih skenario utama, dan kami akan mengisi otomatis data sosio-ekonomi berdasarkan rata-rata negara yang dipilih untuk memberikan prediksi.
 """)
 
 try:
@@ -19,49 +19,94 @@ try:
         st.error(f"Layanan Prediksi terhubung, tetapi model GAGAL dimuat. Pesan: {health_check.json().get('status')}")
         st.stop()
 except requests.exceptions.ConnectionError:
-    st.error("Gagal terhubung ke Layanan Prediksi (Flask API). Pastikan layanan 'flask-api' berjalan.")
+    st.error("Gagal terhubung ke Layanan Prediksi (Flask API). Pastikan layanan 'flask-api' berjalan dan dapat diakses dari layanan dashboard.")
     st.stop()
 
-with st.form("prediction_form"):
-    st.write("Masukkan fitur untuk prediksi:")
+@st.cache_data(ttl=3600)
+def get_form_data():
+    """Mengambil data yang diperlukan untuk mengisi form dari DuckDB."""
+    countries_df = query_duckdb("SELECT DISTINCT Country FROM read_parquet('s3a://gold/country-health-summary/*.parquet') ORDER BY Country")
+    disease_categories = ["Cardiovascular Diseases", "Infectious Diseases", "Cancers", "Respiratory Diseases"]
+    age_groups = ["0-19", "20-39", "40-59", "60-79", "80+"]
+    genders = ["Male", "Female"]
     
-    col1, col2, col3 = st.columns(3)
+    if countries_df.empty:
+        return None, None, None, None
+    
+    return countries_df['Country'].tolist(), disease_categories, age_groups, genders
+
+countries, disease_categories, age_groups, genders = get_form_data()
+
+if not countries:
+    st.warning("Data untuk form prediksi tidak tersedia. Pastikan job 'silver_to_gold.py' sudah berjalan sukses.")
+    st.stop()
+
+st.subheader("1. Pilih Skenario Utama")
+with st.form("prediction_form"):
+    col1, col2 = st.columns(2)
     with col1:
-        year = st.number_input("Year", value=2022, step=1, help="Tahun data.")
-        prevalence_rate = st.number_input("Prevalence Rate (%)", value=5.0)
-        incidence_rate = st.number_input("Incidence Rate (%)", value=1.0)
-        dalys = st.number_input("DALYs", value=400.0)
-
+        default_country_index = countries.index("United States") if "United States" in countries else 0
+        country = st.selectbox("Negara", countries, index=default_country_index)
+        disease_category = st.selectbox("Kategori Penyakit", disease_categories)
+    
     with col2:
-        population_affected = st.number_input("Population Affected", value=100000)
-        healthcare_access = st.number_input("Healthcare Access (%)", value=80.0)
-        doctors_per_1000 = st.number_input("Doctors per 1000", value=2.5)
-        per_capita_income = st.number_input("Per Capita Income (USD)", value=30000.0)
-
-    with col3:
-        hospital_beds = st.number_input("Hospital Beds per 1000", value=3.0)
-        avg_treatment_cost = st.number_input("Avg Treatment Cost (USD)", value=1500.0)
-        recovery_rate = st.number_input("Recovery Rate (%)", value=90.0)
-        education_index = st.number_input("Education Index", value=0.85)
-        urbanization_rate = st.number_input("Urbanization Rate (%)", value=70.0)
-
-    st.markdown("---")
-    country = st.selectbox("Country", ["USA", "Germany", "Japan", "India", "Brazil"])
-    disease_category = st.selectbox("Disease Category", ["Cardiovascular Diseases", "Infectious Diseases", "Cancers", "Respiratory Diseases"])
-    age_group = st.selectbox("Age Group", ["0-19", "20-39", "40-59", "60-79", "80+"])
-    gender = st.selectbox("Gender", ["Male", "Female"])
+        year = st.number_input("Tahun", min_value=2000, max_value=2030, value=2023, step=1)
+        age_group = st.selectbox("Kelompok Usia", age_groups)
+        gender = st.selectbox("Gender", genders)
 
     submitted = st.form_submit_button("Dapatkan Prediksi")
 
 if submitted:
+    st.info(f"Mengambil data rata-rata untuk **{country}** untuk melengkapi fitur...")
+    
+    country_defaults_query = f"SELECT * FROM read_parquet('s3a://gold/country-health-summary/*.parquet') WHERE Country = '{country}'"
+    df_defaults = query_duckdb(country_defaults_query)
+
+    if df_defaults.empty:
+        st.error(f"Tidak dapat menemukan data default untuk {country}. Tidak dapat melanjutkan prediksi.")
+        st.stop()
+
+    defaults = df_defaults.iloc[0]
+
+    with st.expander("Lihat Fitur yang Diisi Otomatis"):
+        st.write("Fitur berikut diisi otomatis berdasarkan data rata-rata negara atau nilai default sistem.")
+        auto_filled_data = {
+            "Prevalence Rate (%)": defaults.get('Avg_Prevalence_Rate_Percent', 5.0),
+            "Population Affected": 100000,
+            "Healthcare Access (%)": defaults.get('Avg_Healthcare_Access_Percent'),
+            "Doctors per 1000": defaults.get('Avg_Doctors_per_1000'),
+            "Hospital Beds per 1000": defaults.get('Avg_Hospital_Beds_per_1000'),
+            "Avg Treatment Cost (USD)": defaults.get('Avg_Average_Treatment_Cost_USD', 1000),
+            "Recovery Rate (%)": defaults.get('Avg_Recovery_Rate_Percent', 50.0),
+            "Per Capita Income (USD)": defaults.get('Avg_Per_Capita_Income_USD'),
+            "Education Index": defaults.get('Avg_Education_Index'),
+            "Urbanization Rate (%)": defaults.get('Avg_Urbanization_Rate_Percent'),
+            "Incidence Rate (%) (Default Sistem)": 1.0,
+            "DALYs (Default Sistem)": 400.0
+        }
+        st.json({k: v for k, v in auto_filled_data.items() if v is not None})
+
     payload = {
-        "Year": year, "Prevalence_Rate_Percent": prevalence_rate, "Incidence_Rate_Percent": incidence_rate,
-        "Population_Affected": int(population_affected), "Healthcare_Access_Percent": healthcare_access,
-        "Doctors_per_1000": doctors_per_1000, "Hospital_Beds_per_1000": hospital_beds,
-        "Average_Treatment_Cost_USD": int(avg_treatment_cost), "Recovery_Rate_Percent": recovery_rate,
-        "DALYs": dalys, "Per_Capita_Income_USD": int(per_capita_income), "Education_Index": education_index,
-        "Urbanization_Rate_Percent": urbanization_rate, "Country": country, "Disease_Category": disease_category,
-        "Age_Group": age_group, "Gender": gender
+        "Year": year,
+        "Country": country,
+        "Disease_Category": disease_category,
+        "Age_Group": age_group,
+        "Gender": gender,
+        
+        "Prevalence_Rate_Percent": float(defaults.get('Avg_Prevalence_Rate_Percent', 5.0)),
+        "Population_Affected": 100000,
+        
+        "Healthcare_Access_Percent": float(defaults.get('Avg_Healthcare_Access_Percent', 0)),
+        "Doctors_per_1000": float(defaults.get('Avg_Doctors_per_1000', 0)),
+        "Hospital_Beds_per_1000": float(defaults.get('Avg_Hospital_Beds_per_1000', 0)),
+        "Average_Treatment_Cost_USD": int(defaults.get('Avg_Average_Treatment_Cost_USD', 1000)),
+        "Recovery_Rate_Percent": float(defaults.get('Avg_Recovery_Rate_Percent', 50.0)),
+        "Per_Capita_Income_USD": int(defaults.get('Avg_Per_Capita_Income_USD', 0)),
+        "Education_Index": float(defaults.get('Avg_Education_Index', 0)),
+        "Urbanization_Rate_Percent": float(defaults.get('Avg_Urbanization_Rate_Percent', 0)),
+
+        "Incidence_Rate_Percent": 1.0,
+        "DALYs": 400.0,
     }
 
     try:

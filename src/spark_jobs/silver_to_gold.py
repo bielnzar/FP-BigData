@@ -7,7 +7,10 @@ MINIO_ACCESS_KEY = os.environ.get("MINIO_ACCESS_KEY", "minioadmin")
 MINIO_SECRET_KEY = os.environ.get("MINIO_SECRET_KEY", "minioadmin")
 
 def get_spark_session():
-    """Mengkonfigurasi dan mengembalikan SparkSession dengan dukungan Hive Metastore."""
+    """
+    Mengkonfigurasi SparkSession.
+    Fungsi ini adalah TITIK INTEGRASI UTAMA DENGAN HIVE METASTORE.
+    """
     return (
         SparkSession.builder.appName("SilverToGoldProcessing")
         .config("spark.hadoop.fs.s3a.endpoint", MINIO_ENDPOINT_URL_DOCKER)
@@ -15,12 +18,6 @@ def get_spark_session():
         .config("spark.hadoop.fs.s3a.secret.key", MINIO_SECRET_KEY)
         .config("spark.hadoop.fs.s3a.path.style.access", "true")
         .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-        .config("hive.metastore.uris", "thrift://hive-metastore:9083")
-        .config("spark.sql.warehouse.dir", "/opt/bitnami/spark/spark-warehouse")
-        .config("hive.metastore.warehouse.dir", "/opt/bitnami/spark/spark-warehouse")
-        .config("hive.metastore.schema.verification", "false")
-        .config("datanucleus.schema.autoCreateAll", "true")
-        .enableHiveSupport()
         .getOrCreate()
     )
 
@@ -39,6 +36,8 @@ def create_country_health_summary_gold(spark, df_silver, gold_path_target):
         avg("Healthcare_Access_Percent").alias("Avg_Healthcare_Access_Percent"),
         avg("Doctors_per_1000").alias("Avg_Doctors_per_1000"),
         avg("Hospital_Beds_per_1000").alias("Avg_Hospital_Beds_per_1000"),
+        avg("Average_Treatment_Cost_USD").alias("Avg_Average_Treatment_Cost_USD"),
+        avg("Recovery_Rate_Percent").alias("Avg_Recovery_Rate_Percent"),
         avg("Per_Capita_Income_USD").alias("Avg_Per_Capita_Income_USD"),
         avg("Education_Index").alias("Avg_Education_Index"),
         avg("Urbanization_Rate_Percent").alias("Avg_Urbanization_Rate_Percent"),
@@ -48,8 +47,9 @@ def create_country_health_summary_gold(spark, df_silver, gold_path_target):
     )
 
     print(f"Writing country_health_summary_gold to: {gold_path_target}")
-    df_gold.write.format("parquet").mode("overwrite").option("path", gold_path_target).saveAsTable("country_health_summary")
-    print("country_health_summary_gold table created.")
+    # Menulis langsung ke path, bukan sebagai tabel Hive
+    df_gold.write.format("parquet").mode("overwrite").save(gold_path_target)
+    print("country_health_summary_gold data written.")
     df_gold.show(5, truncate=False, vertical=True)
 
 def create_yearly_disease_category_summary_gold(spark, df_silver, gold_path_target):
@@ -66,8 +66,8 @@ def create_yearly_disease_category_summary_gold(spark, df_silver, gold_path_targ
     ).orderBy("Year", "Disease_Category")
 
     print(f"Writing yearly_disease_category_summary_gold to: {gold_path_target}")
-    df_gold.write.format("parquet").mode("overwrite").option("path", gold_path_target).saveAsTable("yearly_disease_category_summary")
-    print("yearly_disease_category_summary_gold table created.")
+    df_gold.write.format("parquet").mode("overwrite").save(gold_path_target)
+    print("yearly_disease_category_summary_gold data written.")
     df_gold.show(5, truncate=False, vertical=True)
 
 def create_country_disease_yearly_details_gold(spark, df_silver, gold_path_target):
@@ -92,13 +92,13 @@ def create_country_disease_yearly_details_gold(spark, df_silver, gold_path_targe
     )
 
     print(f"Writing country_disease_yearly_details_gold to: {gold_path_target}")
-    df_gold.write.format("parquet").mode("overwrite").option("path", gold_path_target).saveAsTable("country_disease_yearly_details")
-    print("country_disease_yearly_details_gold table created.")
+    df_gold.write.format("parquet").mode("overwrite").save(gold_path_target)
+    print("country_disease_yearly_details_gold data written.")
     df_gold.show(5, truncate=False, vertical=True)
 
 def create_disease_abstract_counts_gold(spark, df_silver_abstracts, gold_path_target):
     """
-    Membuat tabel hitungan abstrak per kategori penyakit.
+    Membuat tabel hitungan abstrak per kategori penyakit dan mengembalikannya.
     Tujuan: Mengukur volume penelitian untuk setiap kategori penyakit.
     """
     print("Creating disease_abstract_counts_gold...")
@@ -107,9 +107,10 @@ def create_disease_abstract_counts_gold(spark, df_silver_abstracts, gold_path_ta
     ).orderBy(col("Abstract_Count").desc())
 
     print(f"Writing disease_abstract_counts_gold to: {gold_path_target}")
-    df_gold.write.format("parquet").mode("overwrite").option("path", gold_path_target).saveAsTable("gold.disease_abstract_counts")
-    print("disease_abstract_counts_gold table created.")
+    df_gold.write.format("parquet").mode("overwrite").save(gold_path_target)
+    print("disease_abstract_counts_gold data written.")
     df_gold.show(5, truncate=False)
+    return df_gold
 
 def create_combined_analysis_gold(spark, df_silver_health, df_abstract_counts, gold_path_target):
     """
@@ -135,28 +136,13 @@ def create_combined_analysis_gold(spark, df_silver_health, df_abstract_counts, g
     ).orderBy(col("Total_Population_Affected").desc())
 
     print(f"Writing disease_impact_vs_research_gold to: {gold_path_target}")
-    df_gold.write.format("parquet").mode("overwrite").option("path", gold_path_target).saveAsTable("gold.disease_impact_vs_research")
-    print("disease_impact_vs_research_gold table created.")
+    df_gold.write.format("parquet").mode("overwrite").save(gold_path_target)
+    print("disease_impact_vs_research_gold data written.")
     df_gold.show(10, truncate=False)
 
 
 if __name__ == "__main__":
     spark = get_spark_session()
-
-    try:
-        spark.sql("CREATE DATABASE IF NOT EXISTS gold")
-        print("Gold database created or already exists.")
-    except Exception as e:
-        print(f"Warning: Could not create gold database via Hive Metastore: {e}")
-        print("Continuing with table creation without explicit database creation...")
-
-    try:
-        spark.sql("USE gold")
-        print("Using 'gold' schema.")
-    except Exception as e:
-        print(f"Error: Schema 'gold' not found or cannot be used: {e}")
-        spark.stop()
-        exit()
 
     silver_health_stats_path = "s3a://silver/global-health-statistics"
     silver_medical_abstracts_path = "s3a://silver/medical-abstracts"
@@ -189,10 +175,8 @@ if __name__ == "__main__":
 
     if not df_silver_abstracts.isEmpty():
         print("\n--- Processing Medical Abstracts Gold Table ---")
-        create_disease_abstract_counts_gold(spark, df_silver_abstracts, gold_abstract_counts_path)
+        df_abstract_counts_gold = create_disease_abstract_counts_gold(spark, df_silver_abstracts, gold_abstract_counts_path)
     
-        df_abstract_counts_gold = spark.read.format("parquet").load(gold_abstract_counts_path)
-
         if not df_silver_health.isEmpty():
             print("\n--- Processing Combined Analysis Gold Table ---")
             create_combined_analysis_gold(spark, df_silver_health, df_abstract_counts_gold, gold_combined_analysis_path)

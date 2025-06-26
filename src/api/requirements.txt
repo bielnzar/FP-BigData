@@ -1,6 +1,4 @@
-Flask==2.2.2
-Werkzeug<3.0.0
-boto3
+flask
+pyspark==3.4.1
+python-dotenv
 numpy
-py4j
-pyspark==3.4.0
