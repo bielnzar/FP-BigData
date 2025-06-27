@@ -98,6 +98,7 @@ FP-BigData/
 │   ├── download_dataset.sh
 │   └── fetch_flags.py
 ├── docker-compose.yml
+├── Dockerfile.spark-base
 ├── README.md
 ├── EDA.ipynb
 ├── run_pipeline_automation.sh
