@@ -13,7 +13,6 @@ df_trends = query_duckdb(query)
 if not df_trends.empty:
     st.subheader("Sorotan Global")
     
-    # Menghitung metrik sorotan
     total_affected_by_year = df_trends.groupby('Year')['Global_Total_Population_Affected'].sum()
     year_max_affected = total_affected_by_year.idxmax()
     max_affected_value = total_affected_by_year.max()

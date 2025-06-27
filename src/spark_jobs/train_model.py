@@ -37,12 +37,10 @@ def main():
         spark.stop()
         return
 
-    # Mengurangi fitur untuk fokus pada yang paling relevan, termasuk fitur ekonomi kunci
     feature_cols = [
         "Year", "Prevalence_Rate_Percent", "Incidence_Rate_Percent",
         "Average_Treatment_Cost_USD", "Recovery_Rate_Percent", "DALYs",
-        "Per_Capita_Income_USD",  # Menambahkan kembali fitur penting dari EDA
-        # Fitur kategorikal inti
+        "Per_Capita_Income_USD",
         "Country", "Disease_Category", "Age_Group", "Gender"
     ]
     target_col = "Mortality_Rate_Percent"

@@ -16,7 +16,6 @@ Halaman ini memungkinkan Anda untuk mengeksplorasi kata kunci yang paling sering
 Pilih kategori penyakit untuk menghasilkan *word cloud* dan melihat istilah yang paling dominan.
 """)
 
-# Inisialisasi stopwords
 try:
     stop_words = set(nltk.corpus.stopwords.words('english'))
 except LookupError:

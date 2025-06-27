@@ -2,8 +2,12 @@ import streamlit as st
 import requests
 import pandas as pd
 from utils import FLASK_API_URL, query_duckdb
+from urllib.parse import quote
 
 st.set_page_config(page_title="Model Prediktif", layout="wide")
+
+MINIO_ENDPOINT = "localhost:9000"
+MINIO_BUCKET_NAME = "flags"
 
 st.title("🔮 Prediksi Angka Kematian")
 st.markdown("""
@@ -69,20 +73,35 @@ if not countries:
     st.warning("Data untuk form prediksi tidak tersedia. Pastikan job 'silver_to_gold.py' sudah berjalan sukses.")
     st.stop()
 
-st.subheader("1. Pilih Skenario Utama")
+st.subheader("1. Pilih Negara")
+default_country_index = countries.index("United States") if "United States" in countries else 0
+country = st.selectbox(
+    "Pilih negara untuk memulai prediksi:", 
+    countries, 
+    index=default_country_index,
+    label_visibility="collapsed"
+)
+
+col_header, col_flag = st.columns([0.9, 0.1])
+with col_header:
+    st.header(f"Skenario Prediksi untuk {country}")
+with col_flag:
+    safe_country_name = quote(country)
+    flag_url = f"http://{MINIO_ENDPOINT}/{MINIO_BUCKET_NAME}/{safe_country_name}.png"
+    st.image(flag_url, width=80)
+
+st.subheader("2. Lengkapi Detail Skenario")
 with st.form("prediction_form"):
     col1, col2 = st.columns(2)
     with col1:
-        default_country_index = countries.index("United States") if "United States" in countries else 0
-        country = st.selectbox("Negara", countries, index=default_country_index)
         disease_category = st.selectbox("Kategori Penyakit", disease_categories)
+        age_group = st.selectbox("Kelompok Usia", age_groups)
     
     with col2:
         year = st.number_input("Tahun", min_value=2000, max_value=2030, value=2023, step=1)
-        age_group = st.selectbox("Kelompok Usia", age_groups)
         gender = st.selectbox("Gender", genders)
 
-    st.subheader("2. Sesuaikan Detail Tambahan (Opsional)")
+    st.subheader("3. Sesuaikan Detail Tambahan (Opsional)")
     st.markdown("Fitur-fitur ini memiliki nilai default, tetapi dapat Anda sesuaikan untuk skenario yang lebih spesifik.")
     
     col3, col4 = st.columns(2)
@@ -122,13 +141,11 @@ if submitted:
         "Age_Group": age_group,
         "Gender": gender,
         
-        # Fitur yang diisi otomatis dari ringkasan negara
         "Prevalence_Rate_Percent": float(defaults.get('Avg_Prevalence_Rate_Percent', 5.0)),
         "Average_Treatment_Cost_USD": int(defaults.get('Avg_Average_Treatment_Cost_USD', 1000)),
         "Recovery_Rate_Percent": float(defaults.get('Avg_Recovery_Rate_Percent', 50.0)),
         "Per_Capita_Income_USD": int(defaults.get('Avg_Per_Capita_Income_USD', 0)), # Ditambahkan
 
-        # Fitur dari input pengguna
         "Incidence_Rate_Percent": incidence_rate,
         "DALYs": dalys,
     }

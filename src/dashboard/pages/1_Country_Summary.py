@@ -4,10 +4,6 @@ from utils import query_duckdb
 import altair as alt
 from urllib.parse import quote
 
-# Konfigurasi MinIO untuk bendera
-# PENTING: Jika Anda menjalankan Streamlit dari dalam container Docker atau dari mesin yang berbeda
-# dengan MinIO, ganti "localhost" dengan alamat IP atau hostname dari mesin yang menjalankan MinIO
-# yang dapat diakses dari browser Anda.
 MINIO_ENDPOINT = "localhost:9000"
 MINIO_BUCKET_NAME = "flags"
 
@@ -35,7 +31,6 @@ col1, col2 = st.columns([0.9, 0.1])
 with col1:
     st.header(f"Ringkasan Umum untuk {selected_country}")
 with col2:
-    # URL encode nama negara untuk URL yang aman
     safe_country_name = quote(selected_country)
     flag_url = f"http://{MINIO_ENDPOINT}/{MINIO_BUCKET_NAME}/{safe_country_name}.png"
     st.image(flag_url, width=80)
