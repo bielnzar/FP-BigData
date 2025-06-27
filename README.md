@@ -99,9 +99,9 @@ FP-BigData/
 │   └── fetch_flags.py
 ├── docker-compose.yml
 ├── README.md
+├── EDA.ipynb
 ├── run_pipeline_automation.sh
 ├── images/
-│   └── Arsitektur-Fiks.png
 └── src/
     ├── api/
     │   ├── Dockerfile
@@ -212,15 +212,40 @@ Gunakan langkah-langkah ini jika Anda ingin menjalankan setiap komponen secara t
 ### Dashboard Interface
 
 ![interface-1](https://github.com/bielnzar/FP-BigData/blob/main/images/interface-1.png)
-![interface-1](https://github.com/bielnzar/FP-BigData/blob/main/images/interface-2.png)
-![interface-1](https://github.com/bielnzar/FP-BigData/blob/main/images/interface-3.png)
-![interface-1](https://github.com/bielnzar/FP-BigData/blob/main/images/interface-4.png)
-![interface-1](https://github.com/bielnzar/FP-BigData/blob/main/images/interface-5.png)
+
+**Dashboard Overview per Negara**: mendapatkan insight potret kesehatan suatu negara.
+![interface-2](https://github.com/bielnzar/FP-BigData/blob/main/images/interface-2.png)
+
+**Dashboard Tren Tahunan**: Melihat bagaimana metrik kesehatan global berubah dari waktu ke waktu.
+![interface-3](https://github.com/bielnzar/FP-BigData/blob/main/images/interface-3.png)
+
+**Dashboard Analisis Abstrak Medis**: Menemukan fokus penelitian medis terkini melalui analisis teks.
+![interface-4](https://github.com/bielnzar/FP-BigData/blob/main/images/interface-4.png)
+
+**Dashboard Model Prediktif**: Untuk memprediksi angka kematian berdasarkan berbagai faktor.
+![interface-5](https://github.com/bielnzar/FP-BigData/blob/main/images/interface-5.png)
 
 ### Tools Dashboard
 
+**Minio Dashboard - Buckets**
 ![minio](https://github.com/bielnzar/FP-BigData/blob/main/images/minio.png)
+
+**Spark Dashboard - Master**
 ![spark-master](https://github.com/bielnzar/FP-BigData/blob/main/images/spark-master.png)
+
+**Spark Dashboard - Worker**
 ![spark-worker](https://github.com/bielnzar/FP-BigData/blob/main/images/spark-worker.png)
+
+**API Dashboard - Check Health**
 ![health-api](https://github.com/bielnzar/FP-BigData/blob/main/images/health-api.png)
 
+### Output Terminal
+*Beberapa output terminal yang berhasil memberikan insight bagi developer untuk menganalisis sistem yang telah dibuat dan sedang dijalankan*
+
+![docker-compose](https://github.com/bielnzar/FP-BigData/blob/main/images/terminal-1.png)
+![producer-streaming](https://github.com/bielnzar/FP-BigData/blob/main/images/terminal-2.png)
+![consumer-streaming](https://github.com/bielnzar/FP-BigData/blob/main/images/terminal-3.png)
+![automation](https://github.com/bielnzar/FP-BigData/blob/main/images/terminal-4.png)
+![train-model](https://github.com/bielnzar/FP-BigData/blob/main/images/terminal-5.png)
+
+> HAMDALAH

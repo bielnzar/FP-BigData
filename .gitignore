@@ -1,12 +1,29 @@
-.env
-
-venv/
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+*build/
+*dist/
+*.egg-info/
 
-.DS_Store
-Thumbs.db
+# Environment
+.env
+.venv
+venv/
+env/
 
-data/Global Health Statistics.csv
-data/medical_text_classification_fake_dataset.csv
+# Data files - tidak boleh di-commit ke repository
+data/
+!data/download_dataset.sh
+!data/fetch_flags.py
+
+# IDE specific
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Notebook checkpoints
+.ipynb_checkpoints/
 

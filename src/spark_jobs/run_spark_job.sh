@@ -15,9 +15,9 @@ echo "======================================================"
 echo "Mengirimkan pekerjaan Spark: $SPARK_JOB_SCRIPT"
 echo "======================================================"
 
+# Flag --packages dihilangkan karena JARs sudah ada di dalam base image Docker
 docker exec "$SPARK_MASTER_CONTAINER" spark-submit \
   --master spark://spark-master:7077 \
-  --packages org.apache.hadoop:hadoop-aws:3.3.4 \
   --deploy-mode client \
   --driver-memory 1g \
   --executor-memory 2g \
