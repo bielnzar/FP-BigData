@@ -208,3 +208,19 @@ Gunakan langkah-langkah ini jika Anda ingin menjalankan setiap komponen secara t
 - **Flask API Health Check**: Untuk memeriksa status model di API, akses `http://localhost:5001/health`.
 
 ## DOKUMENTASI
+
+### Dashboard Interface
+
+![interface-1](https://github.com/bielnzar/FP-BigData/blob/main/images/interface-1.png)
+![interface-1](https://github.com/bielnzar/FP-BigData/blob/main/images/interface-2.png)
+![interface-1](https://github.com/bielnzar/FP-BigData/blob/main/images/interface-3.png)
+![interface-1](https://github.com/bielnzar/FP-BigData/blob/main/images/interface-4.png)
+![interface-1](https://github.com/bielnzar/FP-BigData/blob/main/images/interface-5.png)
+
+### Tools Dashboard
+
+![minio](https://github.com/bielnzar/FP-BigData/blob/main/images/minio.png)
+![spark-master](https://github.com/bielnzar/FP-BigData/blob/main/images/spark-master.png)
+![spark-worker](https://github.com/bielnzar/FP-BigData/blob/main/images/spark-worker.png)
+![health-api](https://github.com/bielnzar/FP-BigData/blob/main/images/health-api.png)
+
