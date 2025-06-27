@@ -81,13 +81,60 @@ Untuk membangun platform ini, digunakan serangkaian teknologi open-source yang t
     - ***Catatan tentang Deduplikasi***: *Sistem ini menerapkan mekanisme deduplikasi pada tahap Bronze ke Silver dengan menggunakan hash unik untuk setiap baris data. Hal ini menjamin bahwa data di lapisan Silver dan Gold selalu konsisten dan bebas dari duplikasi, bahkan jika data yang sama di-ingest berulang kali.*
 
 - **Pelatihan Model (Spark & Flask)**:
-    - Spark job (`train_model.py`) menggunakan data dari lapisan Silver untuk melatih model Machine Learning (RandomForest) dan menyimpan model yang telah dilatih ke MinIO.
+    - Spark job (`train_model.py`) menggunakan data dari lapisan Silver untuk melatih model Machine Learning. Model yang digunakan adalah **Random Forest Regressor** dari library Spark MLlib, yang cocok untuk tugas prediksi regresi. Model yang telah dilatih kemudian disimpan ke MinIO.
     - Sebuah Flask API (`api/app.py`) memuat model tersebut dan menyediakannya melalui endpoint `/predict`.
 
 - **Penyajian & Visualisasi (DuckDB & Streamlit)**:
     - Dashboard Streamlit (`dashboard/`) berfungsi sebagai antarmuka pengguna.
     - DuckDB, yang berjalan di dalam container Streamlit, terhubung langsung ke lapisan **Gold** di MinIO untuk menjalankan kueri analitik secara cepat dan efisien.
     - Saat pengguna berinteraksi, dashboard mengambil data untuk visualisasi (grafik, tabel) dengan menjalankan kueri via DuckDB. Untuk prediksi, dashboard memanggil Flask API di belakang layar.
+
+## Struktur Folder
+```
+FP-BigData/
+├── data/
+│   ├── Global Health Statistics.csv  # (Dihasilkan oleh skrip)
+│   ├── medical_text_classification_fake_dataset.csv # (Dihasilkan oleh skrip)
+│   ├── download_dataset.sh
+│   └── fetch_flags.py
+├── docker-compose.yml
+├── README.md
+├── run_pipeline_automation.sh
+├── images/
+│   └── Arsitektur-Fiks.png
+└── src/
+    ├── api/
+    │   ├── Dockerfile
+    │   ├── requirements.txt
+    │   └── app.py
+    ├── consumer/
+    │   ├── Dockerfile
+    │   ├── requirements.txt
+    │   ├── consumer.py
+    │   └── start_consumers.sh
+    ├── dashboard/
+    │   ├── Dockerfile
+    │   ├── requirements.txt
+    │   ├── app.py
+    │   ├── utils.py
+    │   └── pages/
+    │       ├── 1_Country_Summary.py
+    │       ├── 2_Yearly_Trends.py
+    │       ├── 3_Abstract_Analysis.py
+    │       └── 4_Predictive_Model.py
+    ├── producer/
+    │   ├── Dockerfile
+    │   ├── requirements.txt
+    │   ├── producer.py
+    │   └── start_producers.sh
+    └── spark_jobs/
+        ├── Dockerfile
+        ├── requirements.txt
+        ├── bronze_to_silver.py
+        ├── silver_to_gold.py
+        ├── train_model.py
+        └── run_spark_job.sh
+```
 
 ## Langkah Penggunaan
 
@@ -160,50 +207,4 @@ Gunakan langkah-langkah ini jika Anda ingin menjalankan setiap komponen secara t
 - **MinIO Console**: Untuk melihat file di Data Lake, akses `http://localhost:9001` (Login: `minioadmin`/`minioadmin`).
 - **Flask API Health Check**: Untuk memeriksa status model di API, akses `http://localhost:5001/health`.
 
-## Struktur Folder
-
-```
-FP-BigData/
-├── data/
-│   ├── Global Health Statistics.csv  # (Dihasilkan oleh skrip)
-│   ├── medical_text_classification_fake_dataset.csv # (Dihasilkan oleh skrip)
-│   ├── download_dataset.sh
-│   └── fetch_flags.py
-├── docker-compose.yml
-├── README.md
-├── run_pipeline_automation.sh
-├── images/
-│   └── Arsitektur-Fiks.png
-└── src/
-    ├── api/
-    │   ├── Dockerfile
-    │   ├── requirements.txt
-    │   └── app.py
-    ├── consumer/
-    │   ├── Dockerfile
-    │   ├── requirements.txt
-    │   ├── consumer.py
-    │   └── start_consumers.sh
-    ├── dashboard/
-    │   ├── Dockerfile
-    │   ├── requirements.txt
-    │   ├── app.py
-    │   ├── utils.py
-    │   └── pages/
-    │       ├── 1_Country_Summary.py
-    │       ├── 2_Yearly_Trends.py
-    │       ├── 3_Abstract_Analysis.py
-    │       └── 4_Predictive_Model.py
-    ├── producer/
-    │   ├── Dockerfile
-    │   ├── requirements.txt
-    │   ├── producer.py
-    │   └── start_producers.sh
-    └── spark_jobs/
-        ├── Dockerfile
-        ├── requirements.txt
-        ├── bronze_to_silver.py
-        ├── silver_to_gold.py
-        ├── train_model.py
-        └── run_spark_job.sh
-```
+## DOKUMENTASI
