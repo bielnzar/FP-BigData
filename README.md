@@ -47,21 +47,21 @@ Proyek ini bertujuan untuk menjawab pertanyaan utama: Bagaimana faktor-faktor so
 
 Untuk membangun platform ini, digunakan serangkaian teknologi open-source yang telah menjadi standar industri dalam rekayasa data dan ilmu data.
 
-- Apache Kafka: Berfungsi sebagai sistem messaging terdistribusi yang berperan sebagai "pintu masuk" utama untuk data. Kafka mampu menangani aliran data bervolume tinggi secara real-time.
+- **Apache Kafka:** Berfungsi sebagai sistem messaging terdistribusi yang berperan sebagai "pintu masuk" utama untuk data. Kafka mampu menangani aliran data bervolume tinggi secara real-time.
 
-- Apache Spark: Merupakan mesin komputasi terpadu untuk pemrosesan data skala besar. Spark adalah "otak" dari pipeline ini, digunakan untuk semua tugas ETL (Extract, Transform, Load), analisis data, dan pelatihan model machine learning.
+- **Apache Spark:** Merupakan mesin komputasi terpadu untuk pemrosesan data skala besar. Spark adalah "otak" dari pipeline ini, digunakan untuk semua tugas ETL (Extract, Transform, Load), analisis data, dan pelatihan model machine learning.
 
-- MinIO: Digunakan sebagai fondasi penyimpanan Data Lake. MinIO adalah sistem object storage berkinerja tinggi yang kompatibel dengan Amazon S3, memungkinkan penyimpanan data dalam skala besar dengan biaya yang efektif.
+- **MinIO:** Digunakan sebagai fondasi penyimpanan Data Lake. MinIO adalah sistem object storage berkinerja tinggi yang kompatibel dengan Amazon S3, memungkinkan penyimpanan data dalam skala besar dengan biaya yang efektif.
 
-- Data Lakehouse (Parquet): Kami menerapkan arsitektur Medallion (Bronze, Silver, Gold) di atas MinIO. Data disimpan dalam format Parquet, sebuah format kolom yang efisien dan teroptimasi untuk beban kerja analitik.
+- **Data Lakehouse (Parquet):** Kami menerapkan arsitektur Medallion (Bronze, Silver, Gold) di atas MinIO. Data disimpan dalam format Parquet, sebuah format kolom yang efisien dan teroptimasi untuk beban kerja analitik.
 
-- DuckDB: Merupakan database analitik dalam-proses (in-process) yang sangat cepat. Dalam arsitektur ini, DuckDB berjalan langsung di dalam container Streamlit, berfungsi sebagai mesin kueri yang sangat efisien untuk membaca data Parquet langsung dari MinIO untuk analisis interaktif di dashboard. Ini menyederhanakan arsitektur secara signifikan.
+- **DuckDB:** Merupakan database analitik dalam-proses (in-process) yang sangat cepat. Dalam arsitektur ini, DuckDB berjalan langsung di dalam container Streamlit, berfungsi sebagai mesin kueri yang sangat efisien untuk membaca data Parquet langsung dari MinIO untuk analisis interaktif di dashboard. Ini menyederhanakan arsitektur secara signifikan.
 
-- Flask: Kerangka kerja web mikro yang ringan dan fleksibel, digunakan secara spesifik untuk menyajikan model Machine Learning yang telah dilatih sebagai sebuah REST API yang efisien.
+- **Flask:** Kerangka kerja web mikro yang ringan dan fleksibel, digunakan secara spesifik untuk menyajikan model Machine Learning yang telah dilatih sebagai sebuah REST API yang efisien.
 
-- Streamlit: Kerangka kerja Python untuk membangun aplikasi web dan dashboard interaktif dengan cepat, memungkinkan visualisasi data dan hasil model tanpa memerlukan pengembangan front-end yang kompleks.
+- **Streamlit:** Kerangka kerja Python untuk membangun aplikasi web dan dashboard interaktif dengan cepat, memungkinkan visualisasi data dan hasil model tanpa memerlukan pengembangan front-end yang kompleks.
 
-- Docker & Docker Compose: Docker Compose digunakan untuk mendefinisikan dan menjalankan layanan aplikasi tersebut secara bersamaan dengan satu perintah, menyederhanakan pengembangan dan deployment.
+- **Docker & Docker Compose:** Docker Compose digunakan untuk mendefinisikan dan menjalankan layanan aplikasi tersebut secara bersamaan dengan satu perintah, menyederhanakan pengembangan dan deployment.
 
 ## Arsitektur dan Metodologi
 
