@@ -78,6 +78,7 @@ Untuk membangun platform ini, digunakan serangkaian teknologi open-source yang t
 - **Pemrosesan ETL (Spark)**:
     - **Bronze ke Silver**: Spark job (`bronze_to_silver.py`) membaca data mentah dari lapisan Bronze, melakukan pembersihan (casting tipe data, penanganan null), standardisasi, dan deduplikasi, lalu menyimpannya dalam format Parquet di lapisan **Silver**.
     - **Silver ke Gold**: Spark job (`silver_to_gold.py`) membaca data bersih dari lapisan Silver, melakukan agregasi dan transformasi bisnis untuk membuat tabel-tabel analitik (misalnya, ringkasan per negara), dan menyimpannya di lapisan **Gold** dalam format Parquet.
+    - ***Catatan tentang Deduplikasi***: *Sistem ini menerapkan mekanisme deduplikasi pada tahap Bronze ke Silver dengan menggunakan hash unik untuk setiap baris data. Hal ini menjamin bahwa data di lapisan Silver dan Gold selalu konsisten dan bebas dari duplikasi, bahkan jika data yang sama di-ingest berulang kali.*
 
 - **Pelatihan Model (Spark & Flask)**:
     - Spark job (`train_model.py`) menggunakan data dari lapisan Silver untuk melatih model Machine Learning (RandomForest) dan menyimpan model yang telah dilatih ke MinIO.
@@ -96,39 +97,52 @@ Untuk membangun platform ini, digunakan serangkaian teknologi open-source yang t
   git clone https://github.com/bielnzar/FP-BigData.git
   cd FP-BigData
   ```
-- **Download Dataset**: Buat folder `data` dan letakkan file `Global_Health_Statistics.csv` dan `Medical_Abstracts.csv` di dalamnya.
+- **Jalankan Platform**: Perintah ini akan membangun image Docker dan menjalankan semua layanan (Kafka, Spark, MinIO, dll.) di latar belakang.
   ```bash
-  mkdir -p data
-  # Letakkan file CSV secara manual di folder data/
-  ```
-- **Jalankan Platform**: Perintah ini akan membangun image Docker dan menjalankan semua layanan (Kafka, Spark, MinIO, dll.).
-  ```bash
-  docker-compose up -d --build
+  docker compose up -d --build
   ```
 
-### 2. Alur Kerja Data
-1.  **Unduh Gambar Bendera (Opsional, sekali jalan)**: Jalankan skrip ini untuk mengunduh bendera negara dan menyimpannya di MinIO.
+### 2. Menjalankan Pipeline (Cara Otomatis - Direkomendasikan)
+Ini adalah cara termudah untuk menjalankan seluruh pipeline dari awal hingga akhir.
+
+1.  **Unduh Dataset**: Jalankan skrip ini untuk mengunduh dataset yang diperlukan ke folder `data/`.
+    ```bash
+    bash data/download_dataset.sh
+    ```
+
+2.  **Unduh Gambar Bendera (Data Tidak Terstruktur)**: Jalankan skrip ini untuk mengunduh bendera negara dan menyimpannya di MinIO.
     ```bash
     python3 data/fetch_flags.py
     ```
 
-2.  **Kirim Data ke Kafka (Producer)**: Buka terminal baru dan jalankan skrip untuk memulai kedua producer secara otomatis.
+3.  **Kirim Data ke Kafka (Producer)**: Jalankan skrip ini untuk mengirim semua data dari file CSV ke Kafka. Ini hanya perlu dijalankan sekali di awal untuk mengisi pipeline.
     ```bash
     bash src/producer/start_producers.sh
     ```
-    *Skrip ini akan membuat ulang topik Kafka dan mulai mengirim data dari file CSV di folder `data/` ke Kafka.*
+    *Tunggu hingga skrip ini selesai (biasanya beberapa menit).*
 
-3.  **Simpan Data ke MinIO (Consumer)**: Buka dua terminal baru dan jalankan consumer untuk setiap topik.
+4.  **Jalankan Otomatisasi Pipeline**: Skrip ini akan menjalankan konsumen dan pekerjaan Spark secara berkala.
     ```bash
-    # Di terminal pertama, jalankan consumer untuk statistik kesehatan
-    python3 src/consumer/consumer.py --topic global-health-stats --group health-consumer-group --batch-size 1000 --batch-timeout 60
-
-    # Di terminal kedua, jalankan consumer untuk abstrak medis
-    python3 src/consumer/consumer.py --topic medical-abstracts --group abstract-consumer-group --batch-size 500 --batch-timeout 60
+    bash run_pipeline_automation.sh
     ```
-    *Biarkan consumer berjalan untuk menangkap aliran data dari Kafka dan menyimpannya ke lapisan Bronze di MinIO. Hentikan dengan `Ctrl+C` jika sudah selesai.*
+    *Biarkan terminal ini berjalan. Skrip ini akan terus memproses data, melatih model, dan memperbarui data mart setiap jam (default). Tekan `Ctrl+C` untuk menghentikannya dengan aman.*
 
-4.  **Proses Data dengan Spark**: Jalankan Spark jobs secara berurutan menggunakan skrip yang disediakan.
+### 3. Menjalankan Pipeline (Langkah Manual - Untuk Development/Debugging)
+Gunakan langkah-langkah ini jika Anda ingin menjalankan setiap komponen secara terpisah untuk tujuan pengembangan atau pemecahan masalah.
+
+1.  **Unduh Dataset & Bendera**: Ikuti langkah 1 & 2 dari cara otomatis di atas.
+
+2.  **Jalankan Producer**:
+    ```bash
+    bash src/producer/start_producers.sh
+    ```
+
+3.  **Jalankan Consumer**: Buka terminal baru, jalankan skrip ini, dan biarkan tetap berjalan.
+    ```bash
+    bash src/consumer/start_consumers.sh
+    ```
+
+4.  **Jalankan Spark Jobs**: Jalankan pekerjaan Spark secara berurutan.
     ```bash
     # 1. Proses data dari Bronze ke Silver
     bash src/spark_jobs/run_spark_job.sh bronze_to_silver.py
@@ -139,9 +153,9 @@ Untuk membangun platform ini, digunakan serangkaian teknologi open-source yang t
     # 3. Latih model Machine Learning
     bash src/spark_jobs/run_spark_job.sh train_model.py
     ```
-    *Catatan: Setelah melatih model, restart layanan API agar model yang baru dapat dimuat: `docker-compose restart flask-api`*
+    *Catatan: Setelah melatih model, restart layanan API agar model yang baru dapat dimuat: `docker compose restart api`*
 
-### 3. Akses Aplikasi
+### 4. Akses Aplikasi
 - **Dashboard Analitik**: Buka browser dan akses Streamlit Dashboard di `http://localhost:8501`.
 - **MinIO Console**: Untuk melihat file di Data Lake, akses `http://localhost:9001` (Login: `minioadmin`/`minioadmin`).
 - **Flask API Health Check**: Untuk memeriksa status model di API, akses `http://localhost:5001/health`.
@@ -151,14 +165,15 @@ Untuk membangun platform ini, digunakan serangkaian teknologi open-source yang t
 ```
 FP-BigData/
 ├── data/
-│   ├── Global_Health_Statistics.csv  # (Download dulu)
-│   ├── Medical_Abstracts.csv         # (Download dulu)
+│   ├── Global Health Statistics.csv  # (Dihasilkan oleh skrip)
+│   ├── medical_text_classification_fake_dataset.csv # (Dihasilkan oleh skrip)
 │   ├── download_dataset.sh
 │   └── fetch_flags.py
 ├── docker-compose.yml
 ├── README.md
+├── run_pipeline_automation.sh
 ├── images/
-│   └── revisi-arsitektur3.png
+│   └── Arsitektur-Fiks.png
 └── src/
     ├── api/
     │   ├── Dockerfile
@@ -167,7 +182,8 @@ FP-BigData/
     ├── consumer/
     │   ├── Dockerfile
     │   ├── requirements.txt
-    │   └── consumer.py
+    │   ├── consumer.py
+    │   └── start_consumers.sh
     ├── dashboard/
     │   ├── Dockerfile
     │   ├── requirements.txt

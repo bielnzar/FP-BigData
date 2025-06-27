@@ -11,6 +11,34 @@ Halaman ini memungkinkan Anda berinteraksi dengan model Machine Learning.
 Cukup pilih skenario utama, dan kami akan mengisi otomatis data sosio-ekonomi berdasarkan rata-rata negara yang dipilih untuk memberikan prediksi.
 """)
 
+with st.expander("ℹ️ Panduan Penggunaan dan Interpretasi Model"):
+    st.markdown("""
+    Bagian ini menjelaskan cara menggunakan model prediksi dan memahami input yang diperlukan untuk mendapatkan hasil yang relevan.
+
+    #### Cara Menggunakan
+    1.  **Pilih Skenario Utama**: Mulailah dengan memilih `Negara`, `Kategori Penyakyt`, `Tahun`, `Kelompok Usia`, dan `Gender`. Ini adalah parameter dasar untuk prediksi Anda.
+    2.  **Sesuaikan Detail Tambahan (Opsional)**: Anda dapat menyesuaikan `Tingkat Insidensi` dan `DALYs` untuk membuat skenario yang lebih spesifik. Jika Anda tidak yakin, biarkan nilai default.
+    3.  **Fitur yang Diisi Otomatis**: Untuk menyederhanakan penggunaan, beberapa fitur sosio-ekonomi yang kompleks (seperti *Prevalence Rate*, *Average Treatment Cost*, dan *Recovery Rate*) akan diisi secara otomatis berdasarkan data rata-rata historis untuk negara yang Anda pilih. Anda dapat melihat nilai-nilai ini di hasil prediksi.
+    4.  **Dapatkan Prediksi**: Klik tombol untuk melihat estimasi angka kematian berdasarkan input Anda.
+
+    #### Panduan Input Tambahan
+    -   **Tingkat Insidensi (%)**:
+        -   **Definisi**: Persentase kasus **baru** dari suatu penyakit dalam populasi selama periode waktu tertentu (biasanya satu tahun).
+        -   **Panduan**: Nilai yang lebih tinggi menunjukkan penyebaran penyakit yang lebih cepat. Untuk sebagian besar penyakit menular atau kronis, rentang nilai yang umum adalah antara **0.1% hingga 15%**. Nilai yang sangat tinggi (misalnya > 30%) mungkin tidak realistis kecuali dalam situasi wabah yang sangat parah dan terlokalisir.
+        -   **Default**: `1.0%`
+
+    -   **DALYs (Disability-Adjusted Life Years)**:
+        -   **Definisi**: Ukuran beban penyakit keseluruhan, yang menggabungkan tahun hidup yang hilang karena kematian dini dan tahun hidup dengan disabilitas.
+        -   **Panduan**: Nilai yang lebih tinggi menunjukkan dampak penyakit yang lebih parah terhadap kualitas hidup dan harapan hidup populasi. Rentang nilai sangat bervariasi:
+            -   Penyakit ringan: **50 - 500**
+            -   Penyakit sedang hingga berat: **500 - 5000**
+            -   Penyakit sangat parah/mematikan: **> 5000**
+        -   **Default**: `400.0`
+
+    #### Interpretasi Hasil
+    Hasil prediksi adalah **estimasi** yang dihasilkan oleh model *Random Forest Regressor* berdasarkan pola data historis. Angka ini bukanlah kepastian medis, melainkan alat bantu untuk analisis tren, perencanaan sumber daya kesehatan, dan pemahaman dampak berbagai faktor terhadap angka kematian.
+    """)
+
 try:
     health_check = requests.get(f"{FLASK_API_URL}/health")
     if health_check.status_code == 200 and health_check.json().get('status') == 'OK':
@@ -54,6 +82,15 @@ with st.form("prediction_form"):
         age_group = st.selectbox("Kelompok Usia", age_groups)
         gender = st.selectbox("Gender", genders)
 
+    st.subheader("2. Sesuaikan Detail Tambahan (Opsional)")
+    st.markdown("Fitur-fitur ini memiliki nilai default, tetapi dapat Anda sesuaikan untuk skenario yang lebih spesifik.")
+    
+    col3, col4 = st.columns(2)
+    with col3:
+        incidence_rate = st.number_input("Tingkat Insidensi (%)", min_value=0.0, max_value=100.0, value=1.0, step=0.1, format="%.1f")
+    with col4:
+        dalys = st.number_input("DALYs (Disability-Adjusted Life Years)", min_value=0.0, value=400.0, step=10.0, format="%.1f")
+
     submitted = st.form_submit_button("Dapatkan Prediksi")
 
 if submitted:
@@ -72,17 +109,9 @@ if submitted:
         st.write("Fitur berikut diisi otomatis berdasarkan data rata-rata negara atau nilai default sistem.")
         auto_filled_data = {
             "Prevalence Rate (%)": defaults.get('Avg_Prevalence_Rate_Percent', 5.0),
-            "Population Affected": 100000,
-            "Healthcare Access (%)": defaults.get('Avg_Healthcare_Access_Percent'),
-            "Doctors per 1000": defaults.get('Avg_Doctors_per_1000'),
-            "Hospital Beds per 1000": defaults.get('Avg_Hospital_Beds_per_1000'),
             "Avg Treatment Cost (USD)": defaults.get('Avg_Average_Treatment_Cost_USD', 1000),
             "Recovery Rate (%)": defaults.get('Avg_Recovery_Rate_Percent', 50.0),
-            "Per Capita Income (USD)": defaults.get('Avg_Per_Capita_Income_USD'),
-            "Education Index": defaults.get('Avg_Education_Index'),
-            "Urbanization Rate (%)": defaults.get('Avg_Urbanization_Rate_Percent'),
-            "Incidence Rate (%) (Default Sistem)": 1.0,
-            "DALYs (Default Sistem)": 400.0
+            "Per Capita Income (USD)": defaults.get('Avg_Per_Capita_Income_USD', 0), # Ditambahkan
         }
         st.json({k: v for k, v in auto_filled_data.items() if v is not None})
 
@@ -93,20 +122,15 @@ if submitted:
         "Age_Group": age_group,
         "Gender": gender,
         
+        # Fitur yang diisi otomatis dari ringkasan negara
         "Prevalence_Rate_Percent": float(defaults.get('Avg_Prevalence_Rate_Percent', 5.0)),
-        "Population_Affected": 100000,
-        
-        "Healthcare_Access_Percent": float(defaults.get('Avg_Healthcare_Access_Percent', 0)),
-        "Doctors_per_1000": float(defaults.get('Avg_Doctors_per_1000', 0)),
-        "Hospital_Beds_per_1000": float(defaults.get('Avg_Hospital_Beds_per_1000', 0)),
         "Average_Treatment_Cost_USD": int(defaults.get('Avg_Average_Treatment_Cost_USD', 1000)),
         "Recovery_Rate_Percent": float(defaults.get('Avg_Recovery_Rate_Percent', 50.0)),
-        "Per_Capita_Income_USD": int(defaults.get('Avg_Per_Capita_Income_USD', 0)),
-        "Education_Index": float(defaults.get('Avg_Education_Index', 0)),
-        "Urbanization_Rate_Percent": float(defaults.get('Avg_Urbanization_Rate_Percent', 0)),
+        "Per_Capita_Income_USD": int(defaults.get('Avg_Per_Capita_Income_USD', 0)), # Ditambahkan
 
-        "Incidence_Rate_Percent": 1.0,
-        "DALYs": 400.0,
+        # Fitur dari input pengguna
+        "Incidence_Rate_Percent": incidence_rate,
+        "DALYs": dalys,
     }
 
     try:

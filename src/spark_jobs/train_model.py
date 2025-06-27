@@ -37,18 +37,19 @@ def main():
         spark.stop()
         return
 
+    # Mengurangi fitur untuk fokus pada yang paling relevan, termasuk fitur ekonomi kunci
     feature_cols = [
-        "Year", "Prevalence_Rate_Percent", "Incidence_Rate_Percent", 
-        "Population_Affected", "Healthcare_Access_Percent", "Doctors_per_1000",
-        "Hospital_Beds_per_1000", "Average_Treatment_Cost_USD", "Recovery_Rate_Percent",
-        "DALYs", "Per_Capita_Income_USD", "Education_Index", "Urbanization_Rate_Percent",
+        "Year", "Prevalence_Rate_Percent", "Incidence_Rate_Percent",
+        "Average_Treatment_Cost_USD", "Recovery_Rate_Percent", "DALYs",
+        "Per_Capita_Income_USD",  # Menambahkan kembali fitur penting dari EDA
+        # Fitur kategorikal inti
         "Country", "Disease_Category", "Age_Group", "Gender"
     ]
     target_col = "Mortality_Rate_Percent"
 
     df_model_data = df_silver.select(feature_cols + [target_col]).na.drop()
 
-    df_model_data = df_model_data.sample(fraction=0.1, seed=42)
+    # df_model_data = df_model_data.sample(fraction=0.1, seed=42)
 
     if df_model_data.isEmpty():
         print("No data available for training after dropping nulls. Stopping job.")

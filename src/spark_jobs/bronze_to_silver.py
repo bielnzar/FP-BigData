@@ -41,7 +41,7 @@ health_stats_schema = StructType([
     StructField("Average_Treatment_Cost_USD", IntegerType(), True),
     StructField("Availability_of_Vaccines_Treatment", StringType(), True),
     StructField("Recovery_Rate_Percent", FloatType(), True),
-    StructField("DALYs", IntegerType(), True),
+    StructField("DALYs", FloatType(), True),
     StructField("Improvement_in_5_Years_Percent", FloatType(), True),
     StructField("Per_Capita_Income_USD", IntegerType(), True),
     StructField("Education_Index", FloatType(), True), 

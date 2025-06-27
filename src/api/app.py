@@ -2,6 +2,7 @@ import os
 from flask import Flask, request, jsonify
 from pyspark.sql import SparkSession
 from pyspark.ml import PipelineModel
+from pyspark.ml.feature import VectorAssembler, StringIndexer
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, FloatType
 
 MINIO_ENDPOINT_URL_DOCKER = os.environ.get("MINIO_ENDPOINT_URL_DOCKER", "http://minio:9000")
@@ -39,24 +40,19 @@ app = Flask(__name__)
 spark_session = get_spark_session()
 model = load_model(spark_session, MODEL_PATH)
 
+# Skema disesuaikan dengan fitur model yang baru
 prediction_schema = StructType([
     StructField("Year", IntegerType(), True),
     StructField("Prevalence_Rate_Percent", FloatType(), True),
-    StructField("Population_Affected", IntegerType(), True),
+    StructField("Incidence_Rate_Percent", FloatType(), True),
+    StructField("Average_Treatment_Cost_USD", IntegerType(), True),
+    StructField("Recovery_Rate_Percent", FloatType(), True),
+    StructField("DALYs", FloatType(), True),
+    StructField("Per_Capita_Income_USD", IntegerType(), True), # Ditambahkan
     StructField("Country", StringType(), True),
     StructField("Disease_Category", StringType(), True),
     StructField("Age_Group", StringType(), True),
-    StructField("Gender", StringType(), True),
-    StructField("Healthcare_Access_Percent", FloatType(), True),
-    StructField("Doctors_per_1000", FloatType(), True),
-    StructField("Hospital_Beds_per_1000", FloatType(), True),
-    StructField("Average_Treatment_Cost_USD", IntegerType(), True),
-    StructField("Recovery_Rate_Percent", FloatType(), True),
-    StructField("Per_Capita_Income_USD", IntegerType(), True),
-    StructField("Education_Index", FloatType(), True),
-    StructField("Urbanization_Rate_Percent", FloatType(), True),
-    StructField("Incidence_Rate_Percent", FloatType(), True),
-    StructField("DALYs", FloatType(), True)
+    StructField("Gender", StringType(), True)
 ])
 
 @app.route('/health', methods=['GET'])
@@ -75,6 +71,33 @@ def predict():
 
     try:
         data = request.get_json()
+
+        # --- Validasi Fitur ---
+        # Dapatkan semua fitur input mentah yang diharapkan oleh pipeline model
+        try:
+            # 1. Dapatkan fitur numerik dari VectorAssembler
+            assembler = next(s for s in reversed(model.stages) if isinstance(s, VectorAssembler))
+            model_numeric_cols = {c for c in assembler.getInputCols() if not c.endswith('_vec')}
+            
+            # 2. Dapatkan fitur kategorikal dari StringIndexer
+            model_categorical_cols = {s.getInputCol() for s in model.stages if isinstance(s, StringIndexer)}
+            
+            expected_features = model_numeric_cols.union(model_categorical_cols)
+        except (StopIteration, AttributeError):
+            return jsonify({'error': 'Tidak dapat mengidentifikasi fitur yang dibutuhkan dari pipeline model.'}), 500
+
+        request_cols = set(data.keys())
+
+        # Periksa apakah ada fitur yang hilang dalam request
+        missing_features = expected_features - request_cols
+        if missing_features:
+            error_msg = (
+                f"Fitur yang dibutuhkan oleh model tidak ada dalam request: {sorted(list(missing_features))}. "
+                "Ini kemungkinan terjadi karena model yang dimuat tidak sinkron dengan kode aplikasi. "
+                "Solusi: Latih ulang model (jalankan 'bash src/spark_jobs/run_spark_job.sh train_model.py') lalu restart layanan API."
+            )
+            return jsonify({'error': error_msg}), 400 # Bad Request
+
         df = spark_session.createDataFrame([data], schema=prediction_schema)
         
         prediction_df = model.transform(df)
